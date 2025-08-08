@@ -4,6 +4,10 @@ import React, { createContext, useContext, useState, useRef, useCallback, useEff
 import { GeminiLiveClient } from '@/lib/gemini-live-client';
 import { AudioManager } from '@/lib/audio-manager';
 import { LiveConnectConfig } from '@google/genai';
+import { DEFAULT_TOOLS } from '@/lib/function-declarations';
+import { Report, ReportGenerationProgress } from '@/types/report';
+import { ReportStorage } from '@/lib/report-storage';
+import { useRouter } from 'next/navigation';
 
 // Types
 interface GeminiMessage {
@@ -46,6 +50,12 @@ interface EnhancedAIAssistantContextType {
   isStreaming: boolean;
   currentResponse: string;
   
+  // Report state
+  reports: Report[];
+  currentReport: Report | null;
+  reportProgress: ReportGenerationProgress | null;
+  isGeneratingReport: boolean;
+  
   // UI state
   uiMode: UIMode;
   isSidebarOpen: boolean;
@@ -56,6 +66,7 @@ interface EnhancedAIAssistantContextType {
   voiceName: string;
   systemInstructions: string;
   responseModality: 'TEXT' | 'AUDIO' | 'TEXT_AND_AUDIO';
+  toolsEnabled: boolean;
   
   // Actions
   connect: () => Promise<void>;
@@ -69,6 +80,12 @@ interface EnhancedAIAssistantContextType {
   sendTextMessage: (message: string) => void;
   clearConversation: () => void;
   
+  // Report actions
+  generateReport: (title: string, instructions?: string) => void;
+  updateReport: (reportId: string, instructions: string) => void;
+  deleteReport: (reportId: string) => void;
+  clearAllReports: () => void;
+  
   // UI actions
   setUIMode: (mode: UIMode) => void;
   toggleSidebar: () => void;
@@ -79,6 +96,7 @@ interface EnhancedAIAssistantContextType {
   setVoiceName: (voice: string) => void;
   setSystemInstructions: (instructions: string) => void;
   setResponseModality: (modality: 'TEXT' | 'AUDIO' | 'TEXT_AND_AUDIO') => void;
+  setToolsEnabled: (enabled: boolean) => void;
   
   // Utility actions
   switchToVoiceMode: () => Promise<void>;
@@ -96,6 +114,8 @@ export function useEnhancedAIAssistant() {
 }
 
 export function EnhancedAIAssistantProvider({ children }: { children: React.ReactNode }) {
+  const router = useRouter();
+  
   // Connection state
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('disconnected');
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -112,6 +132,12 @@ export function EnhancedAIAssistantProvider({ children }: { children: React.Reac
   const [isStreaming, setIsStreaming] = useState(false);
   const [currentResponse, setCurrentResponse] = useState('');
   
+  // Report state
+  const [reports, setReports] = useState<Report[]>([]);
+  const [currentReport, setCurrentReport] = useState<Report | null>(null);
+  const [reportProgress, setReportProgress] = useState<ReportGenerationProgress | null>(null);
+  const [isGeneratingReport, setIsGeneratingReport] = useState(false);
+  
   // UI state
   const [uiMode, setUIMode] = useState<UIMode>('voice');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -121,14 +147,21 @@ export function EnhancedAIAssistantProvider({ children }: { children: React.Reac
   // Configuration state
   const [voiceName, setVoiceName] = useState('Aoede');
   const [systemInstructions, setSystemInstructions] = useState(
-    'You are a helpful AI assistant for MVP Blocks, a component library. Help users with UI components, design patterns, and development questions. Keep responses concise and practical.'
+    'You are a helpful AI assistant for MVP Blocks, a component library. Help users with UI components, design patterns, and development questions. When users ask for reports, analysis, or summaries, use the generateReport function to create comprehensive markdown reports. You can also list, read, and update existing reports using the available functions. Keep responses concise and practical.'
   );
   const [responseModality, setResponseModality] = useState<'TEXT' | 'AUDIO' | 'TEXT_AND_AUDIO'>('TEXT_AND_AUDIO');
+  const [toolsEnabled, setToolsEnabled] = useState(true);
   
   // Service references
   const clientRef = useRef<GeminiLiveClient>();
   const audioManagerRef = useRef<AudioManager>();
   
+  // Load reports from storage on mount
+  useEffect(() => {
+    const storedReports = ReportStorage.getAllReports();
+    setReports(storedReports);
+  }, []);
+
   // Initialize services
   useEffect(() => {
     const apiKey = process.env.NEXT_PUBLIC_GOOGLE_AI_API_KEY;
@@ -215,6 +248,16 @@ export function EnhancedAIAssistantProvider({ children }: { children: React.Reac
       setVoiceState('idle');
     });
 
+    client.on('toolcall', (toolCall) => {
+      console.log('🔧 Tool call received:', toolCall);
+      handleToolCall(toolCall);
+    });
+
+    client.on('toolcallcancellation', (cancellation) => {
+      console.log('❌ Tool call cancelled:', cancellation);
+      // Handle tool call cancellation if needed
+    });
+
     // Initialize Audio Manager
     console.log('🎤 Initializing Audio Manager...');
     audioManagerRef.current = new AudioManager({
@@ -241,6 +284,165 @@ export function EnhancedAIAssistantProvider({ children }: { children: React.Reac
     };
   }, []);
 
+  // Handle tool calls
+  const handleToolCall = useCallback(async (toolCall: any) => {
+    const { functionCalls } = toolCall;
+    
+    for (const functionCall of functionCalls) {
+      const { name, args, id } = functionCall;
+      
+      try {
+        if (name === 'generateReport') {
+          const { title, content, category, tags = [] } = args;
+          
+          // Create new report
+          const report: Report = {
+            id: Date.now().toString(),
+            title,
+            content,
+            category: category || 'other',
+            tags,
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
+            status: 'completed',
+            metadata: {
+              wordCount: content.split(' ').length,
+              estimatedReadTime: Math.ceil(content.split(' ').length / 200),
+              source: 'conversation'
+            }
+          };
+          
+          // Save report
+          ReportStorage.saveReport(report);
+          setReports(prev => [...prev, report]);
+          setCurrentReport(report);
+          
+          // Navigate to report page
+          router.push('/report');
+          
+          // Send tool response
+          if (clientRef.current) {
+            clientRef.current.sendToolResponse({
+              functionResponses: [{
+                name,
+                id,
+                response: { success: true, reportId: report.id }
+              }]
+            });
+          }
+        } else if (name === 'listReports') {
+          const { category } = args || {};
+          const allReports = ReportStorage.getAllReports();
+          const filteredReports = category 
+            ? allReports.filter(r => r.category === category)
+            : allReports;
+          
+          const reportList = filteredReports.map(r => ({
+            id: r.id,
+            title: r.title,
+            category: r.category,
+            createdAt: r.createdAt,
+            tags: r.tags
+          }));
+          
+          if (clientRef.current) {
+            clientRef.current.sendToolResponse({
+              functionResponses: [{
+                name,
+                id,
+                response: { success: true, reports: reportList, count: reportList.length }
+              }]
+            });
+          }
+        } else if (name === 'getReport') {
+          const { reportId, title } = args;
+          let report: Report | null = null;
+          
+          if (reportId) {
+            report = ReportStorage.getReport(reportId);
+          } else if (title) {
+            const allReports = ReportStorage.getAllReports();
+            report = allReports.find(r => r.title.toLowerCase().includes(title.toLowerCase())) || null;
+          }
+          
+          if (clientRef.current) {
+            clientRef.current.sendToolResponse({
+              functionResponses: [{
+                name,
+                id,
+                response: report 
+                  ? { success: true, report }
+                  : { success: false, error: 'Report not found' }
+              }]
+            });
+          }
+        } else if (name === 'updateReport') {
+          const { reportId, title: newTitle, content, category: newCategory, tags: newTags } = args;
+          const existingReport = ReportStorage.getReport(reportId);
+          
+          if (existingReport) {
+            const updatedReport: Report = {
+              ...existingReport,
+              title: newTitle || existingReport.title,
+              content,
+              category: newCategory || existingReport.category,
+              tags: newTags || existingReport.tags,
+              updatedAt: Date.now(),
+              metadata: {
+                ...existingReport.metadata,
+                wordCount: content.split(' ').length,
+                estimatedReadTime: Math.ceil(content.split(' ').length / 200)
+              }
+            };
+            
+            // Save updated report
+            ReportStorage.saveReport(updatedReport);
+            setReports(prev => prev.map(r => r.id === reportId ? updatedReport : r));
+            setCurrentReport(updatedReport);
+            
+            // Navigate to report page if not already there
+            if (window.location.pathname !== '/report') {
+              router.push('/report');
+            }
+            
+            if (clientRef.current) {
+              clientRef.current.sendToolResponse({
+                functionResponses: [{
+                  name,
+                  id,
+                  response: { success: true, reportId: updatedReport.id }
+                }]
+              });
+            }
+          } else {
+            if (clientRef.current) {
+              clientRef.current.sendToolResponse({
+                functionResponses: [{
+                  name,
+                  id,
+                  response: { success: false, error: 'Report not found' }
+                }]
+              });
+            }
+          }
+        }
+      } catch (error) {
+        console.error('❌ Tool call error:', error);
+        
+        // Send error response
+        if (clientRef.current) {
+          clientRef.current.sendToolResponse({
+            functionResponses: [{
+              name,
+              id,
+              response: { success: false, error: 'Failed to execute function' }
+            }]
+          });
+        }
+      }
+    }
+  }, [router]);
+
   // Generate Live API configuration
   const generateConfig = useCallback((mode: UIMode = uiMode): LiveConnectConfig => {
     const config: LiveConnectConfig = {
@@ -252,6 +454,11 @@ export function EnhancedAIAssistantProvider({ children }: { children: React.Reac
         parts: [{ text: systemInstructions }]
       }
     };
+
+    // Add tools if enabled
+    if (toolsEnabled) {
+      config.tools = DEFAULT_TOOLS;
+    }
 
     // Add voice-specific config only for voice mode (at root level, not in generationConfig)
     if (mode === 'voice') {
@@ -268,7 +475,7 @@ export function EnhancedAIAssistantProvider({ children }: { children: React.Reac
     }
 
     return config;
-  }, [uiMode, voiceName, systemInstructions]);
+  }, [uiMode, voiceName, systemInstructions, toolsEnabled]);
 
   // Connect to Gemini Live API
   const connect = useCallback(async (mode?: UIMode) => {
@@ -432,6 +639,36 @@ export function EnhancedAIAssistantProvider({ children }: { children: React.Reac
     setIsStreaming(false);
   }, []);
 
+  // Report actions
+  const generateReport = useCallback((title: string, instructions?: string) => {
+    const message = instructions 
+      ? `Generate a report titled "${title}" with the following instructions: ${instructions}`
+      : `Generate a comprehensive report titled "${title}"`;
+    sendTextMessage(message);
+  }, [sendTextMessage]);
+
+  const updateReport = useCallback((reportId: string, instructions: string) => {
+    const report = reports.find(r => r.id === reportId);
+    if (report) {
+      const message = `Update the report "${report.title}" with these instructions: ${instructions}`;
+      sendTextMessage(message);
+    }
+  }, [reports, sendTextMessage]);
+
+  const deleteReport = useCallback((reportId: string) => {
+    ReportStorage.deleteReport(reportId);
+    setReports(prev => prev.filter(r => r.id !== reportId));
+    if (currentReport?.id === reportId) {
+      setCurrentReport(null);
+    }
+  }, [currentReport]);
+
+  const clearAllReports = useCallback(() => {
+    ReportStorage.clearAllReports();
+    setReports([]);
+    setCurrentReport(null);
+  }, []);
+
   // Toggle sidebar
   const toggleSidebar = useCallback(() => {
     setIsSidebarOpen(prev => !prev);
@@ -528,6 +765,12 @@ export function EnhancedAIAssistantProvider({ children }: { children: React.Reac
     isStreaming,
     currentResponse,
     
+    // Report state
+    reports,
+    currentReport,
+    reportProgress,
+    isGeneratingReport,
+    
     // UI state
     uiMode,
     isSidebarOpen,
@@ -538,6 +781,7 @@ export function EnhancedAIAssistantProvider({ children }: { children: React.Reac
     voiceName,
     systemInstructions,
     responseModality,
+    toolsEnabled,
     
     // Actions
     connect,
@@ -551,6 +795,12 @@ export function EnhancedAIAssistantProvider({ children }: { children: React.Reac
     sendTextMessage,
     clearConversation,
     
+    // Report actions
+    generateReport,
+    updateReport,
+    deleteReport,
+    clearAllReports,
+    
     // UI actions
     setUIMode,
     toggleSidebar,
@@ -561,6 +811,7 @@ export function EnhancedAIAssistantProvider({ children }: { children: React.Reac
     setVoiceName,
     setSystemInstructions,
     setResponseModality,
+    setToolsEnabled,
     
     // Utility actions
     switchToVoiceMode,

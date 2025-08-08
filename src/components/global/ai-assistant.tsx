@@ -15,34 +15,43 @@ export function GlobalAIAssistant() {
     isStreaming,
   } = useEnhancedAIAssistant();
 
-  const [isInHeroSection, setIsInHeroSection] = useState(true);
+  const [isInHeroSection, setIsInHeroSection] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   useEffect(() => {
-    const handleScroll = () => {
+    const checkHeroSection = () => {
+      const isHomepage = window.location.pathname === '/';
       const heroSection = document.getElementById('hero-section');
+      
+      if (!isHomepage) {
+        setIsInHeroSection(false);
+        return;
+      }
+      
       if (heroSection) {
         const heroRect = heroSection.getBoundingClientRect();
-        const isInHero = heroRect.bottom > 100; // Consider in hero if bottom is more than 100px from top
+        const isInHero = heroRect.bottom > 200; // More space for homepage hero
         setIsInHeroSection(isInHero);
       }
     };
 
     // Check initial state
-    handleScroll();
+    checkHeroSection();
 
-    // Add scroll listener
-    window.addEventListener('scroll', handleScroll, { passive: true });
+    // Add scroll listener only for homepage
+    if (window.location.pathname === '/') {
+      window.addEventListener('scroll', checkHeroSection, { passive: true });
+    }
     
-    // Also listen for route changes
+    // Listen for route changes
     const handleRouteChange = () => {
-      setTimeout(handleScroll, 100); // Small delay to ensure DOM is updated
+      setTimeout(checkHeroSection, 100);
     };
     
     window.addEventListener('popstate', handleRouteChange);
 
     return () => {
-      window.removeEventListener('scroll', handleScroll);
+      window.removeEventListener('scroll', checkHeroSection);
       window.removeEventListener('popstate', handleRouteChange);
     };
   }, []);
@@ -60,7 +69,7 @@ export function GlobalAIAssistant() {
               y: 0,
               left: '50%',
               x: '-50%',
-              bottom: isInHeroSection ? 'calc(10rem + 100px)' : 'calc(2rem + 100px)' // 100px above tray
+              bottom: isInHeroSection ? 'calc(6rem + 100px)' : 'calc(2rem + 100px)' // 100px above tray
             }}
             exit={{ opacity: 0, y: 20 }}
             transition={{
@@ -95,7 +104,7 @@ export function GlobalAIAssistant() {
         animate={{
           left: isSidebarOpen ? 'calc(50% + 192px)' : '50%', // 192px = half of sidebar width (384px/2)
           x: '-50%',
-          bottom: isInHeroSection ? '10rem' : '2rem' // 10rem when in hero, 2rem otherwise
+          bottom: isInHeroSection ? '6rem' : '2rem' // 6rem when in homepage hero, 2rem otherwise
         }}
         transition={{
           type: 'tween',
