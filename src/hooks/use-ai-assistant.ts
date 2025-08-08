@@ -1,0 +1,1 @@
+export { useEnhancedAIAssistant as useAIAssistant } from '@/contexts/enhanced-ai-assistant-context';

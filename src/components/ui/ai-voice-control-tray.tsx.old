@@ -1,0 +1,578 @@
+'use client';
+
+import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { cn } from '@/lib/utils';
+import { useAIAssistant } from '@/contexts/ai-assistant-context';
+import { 
+  MessageSquare, 
+  Mic, 
+  MicOff, 
+  Pause, 
+  Play, 
+  Download,
+  Settings,
+  Volume2,
+  VolumeX,
+  MoreHorizontal,
+  Send,
+  X
+} from 'lucide-react';
+
+interface AIVoiceControlTrayProps {
+  className?: string;
+  isLive?: boolean;
+  isTextMode?: boolean;
+  isSidebarOpen?: boolean;
+  onTextModeToggle?: () => void;
+  onVoiceToggle?: () => void;
+  onConfigAction?: () => void;
+  onBackToVoice?: () => void;
+  onSendMessage?: (message: string) => void;
+  configIcon?: React.ReactNode;
+  variant?: 'default' | 'compact' | 'minimal';
+  size?: 'sm' | 'md' | 'lg';
+}
+
+type VoiceState = 'idle' | 'listening' | 'speaking' | 'paused';
+
+export function AIVoiceControlTray({
+  className,
+  configIcon = <Download className="h-4 w-4" />,
+  variant = 'default',
+  size = 'md',
+}: { className?: string; configIcon?: React.ReactNode; variant?: string; size?: 'sm' | 'md' | 'lg' }) {
+  const {
+    connectionStatus,
+    isRecording,
+    audioLevel,
+    isTextMode,
+    isSidebarOpen,
+    isLive,
+    startVoiceRecording,
+    stopVoiceRecording,
+    sendTextMessage,
+    toggleTextMode,
+    backToVoice,
+    connect
+  } = useAIAssistant();
+
+  const [voiceState, setVoiceState] = useState<VoiceState>('idle');
+  const [pulseKey, setPulseKey] = useState(0);
+  const [textInput, setTextInput] = useState('');
+  const [isVoiceActive, setIsVoiceActive] = useState(false);
+  const inputRef = React.useRef<HTMLInputElement>(null);
+
+  // Auto-connect when component mounts
+  useEffect(() => {
+    if (connectionStatus === 'disconnected') {
+      console.log('🔌 Auto-connecting to Gemini Live API...');
+      connect().catch(error => {
+        console.error('❌ Auto-connect failed:', error);
+      });
+    }
+  }, [connectionStatus, connect]);
+
+  // Reset voice state when not live or in text mode
+  useEffect(() => {
+    if (!isLive || isTextMode) {
+      setVoiceState('idle');
+      setIsVoiceActive(false);
+    }
+  }, [isLive, isTextMode]);
+
+  // Update pulse key when voice state changes to restart animations
+  useEffect(() => {
+    if (isRecording) {
+      setPulseKey(prev => prev + 1);
+      setIsVoiceActive(true);
+      setVoiceState('listening');
+    } else {
+      setIsVoiceActive(false);
+      setVoiceState('idle');
+    }
+  }, [isRecording]);
+
+  const sizeConfig = {
+    sm: {
+      container: 'h-14 px-2',
+      button: 'h-8 w-8',
+      voiceButton: 'h-10 w-10',
+      icon: 'h-3.5 w-3.5',
+      voiceIcon: 'h-5 w-5', // Made bigger
+    },
+    md: {
+      container: 'h-16 px-2',
+      button: 'h-10 w-10',
+      voiceButton: 'h-12 w-12',
+      icon: 'h-4 w-4',
+      voiceIcon: 'h-6 w-6', // Made bigger
+    },
+    lg: {
+      container: 'h-20 px-2', // Fixed height for consistency
+      button: 'h-12 w-12',
+      voiceButton: 'h-16 w-16',
+      icon: 'h-5 w-5',
+      voiceIcon: 'h-7 w-7', // Made bigger
+    },
+  };
+
+  const config = sizeConfig[size];
+
+  const handleTextModeToggle = () => {
+    setTextInput('');
+    toggleTextMode();
+  };
+
+  const handleBackToVoice = () => {
+    setTextInput('');
+    backToVoice();
+  };
+
+  const getVoiceIcon = () => {
+    // Only change icons when manually activated by clicking mic in voice mode
+    if (!isTextMode && isLive && isVoiceActive) {
+      switch (voiceState) {
+        case 'listening':
+          return <Mic className="h-full w-full" />;
+        case 'speaking':
+          return <Volume2 className="h-full w-full" />;
+        case 'paused':
+          return <Pause className="h-full w-full" />;
+        default:
+          return <Mic className="h-full w-full" />;
+      }
+    }
+    // Default mic icon for all other states
+    return <Mic className="h-full w-full" />;
+  };
+
+  const handleInputClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (inputRef.current) {
+      inputRef.current.focus();
+    }
+  };
+
+  // Focus input when entering text mode
+  useEffect(() => {
+    if (isTextMode && inputRef.current) {
+      // Focus after animation completes
+      const timer = setTimeout(() => {
+        if (inputRef.current) {
+          inputRef.current.focus();
+        }
+      }, 400);
+      return () => clearTimeout(timer);
+    }
+  }, [isTextMode]);
+
+  const handleSendMessage = () => {
+    if (textInput.trim()) {
+      sendTextMessage(textInput);
+      setTextInput('');
+    }
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSendMessage();
+    }
+  };
+
+  const handleVoiceToggle = async () => {
+    if (!isTextMode && isLive) {
+      if (isRecording) {
+        stopVoiceRecording();
+      } else {
+        await startVoiceRecording();
+      }
+    }
+  };
+
+
+
+  return (
+    <>
+      <motion.div
+        className={cn(
+          'relative flex items-center rounded-full',
+          'bg-black/90 backdrop-blur-xl',
+          'border border-white/10',
+          'shadow-2xl shadow-black/50',
+          config.container,
+          isTextMode ? 'justify-between' : 'justify-between',
+          className,
+        )}
+        initial={{ opacity: 0, y: 20, scale: 0.9 }}
+        animate={{ 
+          opacity: 1, 
+          y: 0, 
+          scale: 1,
+          width: isTextMode ? '600px' : '400px'
+        }}
+        transition={{ 
+          duration: 0.3, 
+          ease: [0.25, 0.46, 0.45, 0.94],
+          type: 'tween'
+        }}
+      >
+        {/* Rotating Glow Effect */}
+        <div 
+          className="absolute inset-0 rounded-full opacity-30 pointer-events-none"
+          style={{
+            background: `conic-gradient(
+              from var(--glow-angle, 0deg),
+              transparent 0deg,
+              rgba(244, 63, 94, 0.4) 60deg,
+              rgba(59, 130, 246, 0.4) 120deg,
+              rgba(168, 85, 247, 0.4) 180deg,
+              rgba(34, 197, 94, 0.4) 240deg,
+              rgba(251, 191, 36, 0.4) 300deg,
+              transparent 360deg
+            )`,
+            animation: 'glow-rotate 4s linear infinite',
+            filter: 'blur(8px)',
+            zIndex: -1,
+          }}
+        />
+        
+        {/* Inner glow for depth */}
+        <div 
+          className="absolute inset-[2px] rounded-full opacity-20 pointer-events-none"
+          style={{
+            background: `conic-gradient(
+              from var(--glow-angle, 0deg),
+              transparent 0deg,
+              rgba(244, 63, 94, 0.6) 90deg,
+              rgba(59, 130, 246, 0.6) 180deg,
+              rgba(168, 85, 247, 0.6) 270deg,
+              transparent 360deg
+            )`,
+            animation: 'glow-rotate 6s linear infinite reverse',
+            filter: 'blur(4px)',
+            zIndex: -1,
+          }}
+        />
+      {/* Ambient glow only when recording */}
+      <AnimatePresence>
+        {isLive && !isTextMode && isRecording && (
+          <motion.div
+            className="absolute inset-0 rounded-full"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.div
+              key={pulseKey}
+              className="absolute inset-0 rounded-full bg-rose-500/20 blur-xl"
+              initial={{ scale: 1, opacity: 0.5 }}
+              animate={{ 
+                scale: [1, 1.2, 1],
+                opacity: [0.5, 0.8, 0.5]
+              }}
+              transition={{ 
+                duration: 2,
+                ease: 'easeInOut',
+                repeat: Infinity
+              }}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
+      
+      {/* Audio level visualization */}
+      {isRecording && audioLevel > 0 && (
+        <div 
+          className="absolute inset-0 rounded-full bg-green-500/20 blur-sm"
+          style={{ opacity: audioLevel / 100 }}
+        />
+      )}
+
+      <AnimatePresence mode="wait">
+        {isTextMode ? (
+          // Text Input Mode
+          <motion.div
+            key="text-mode"
+            className="flex items-center w-full justify-between"
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.9 }}
+            transition={{ duration: 0.3 }}
+          >
+            {/* Voice Mode Toggle Button (back to voice mode) */}
+            <motion.button
+              onClick={handleBackToVoice}
+              className={cn(
+                'relative flex items-center justify-center rounded-full',
+                'text-white/70 hover:text-white/90',
+                'transition-all duration-200',
+                'hover:scale-105 active:scale-95',
+                config.button,
+              )}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              <Mic className={config.icon} />
+            </motion.button>
+
+            {/* Text Mode Icon (smaller, clickable to open sidebar) */}
+            <motion.button
+              onClick={handleTextModeToggle}
+              className={cn(
+                'relative flex items-center justify-center rounded-full',
+                'bg-rose-500/80 text-white shadow-lg shadow-rose-500/30',
+                'h-8 w-8 transition-all duration-200',
+                'hover:scale-105 active:scale-95',
+                isSidebarOpen && 'ring-2 ring-rose-400/50'
+              )}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              <MessageSquare className="h-4 w-4" />
+            </motion.button>
+
+            {/* Text Input */}
+            <div 
+              className={cn(
+                "flex-1 mx-4 relative z-10",
+                isSidebarOpen ? "cursor-not-allowed" : "cursor-text"
+              )}
+              onClick={!isSidebarOpen ? handleInputClick : undefined}
+            >
+              <input
+                ref={inputRef}
+                type="text"
+                value={textInput}
+                onChange={(e) => setTextInput(e.target.value)}
+                onKeyDown={handleKeyPress}
+                onClick={!isSidebarOpen ? handleInputClick : undefined}
+                placeholder={isSidebarOpen ? "Use sidebar to chat..." : "Type your message..."}
+                autoComplete="off"
+                spellCheck="false"
+                disabled={isSidebarOpen}
+                className={cn(
+                  'w-full bg-transparent border-none outline-none',
+                  'text-white placeholder-white/50',
+                  'text-sm cursor-text',
+                  'focus:outline-none focus:ring-0',
+                  'pointer-events-auto',
+                  isSidebarOpen && 'opacity-50 cursor-not-allowed'
+                )}
+                style={{ 
+                  background: 'transparent',
+                  border: 'none',
+                  outline: 'none'
+                }}
+              />
+            </div>
+
+            {/* Send Button */}
+            <motion.button
+              onClick={handleSendMessage}
+              disabled={!textInput.trim()}
+              className={cn(
+                'relative flex items-center justify-center rounded-full',
+                'transition-all duration-200',
+                'hover:scale-105 active:scale-95',
+                config.button,
+                textInput.trim()
+                  ? 'bg-rose-500/80 text-white shadow-lg shadow-rose-500/30'
+                  : 'text-white/40'
+              )}
+              whileHover={{ scale: textInput.trim() ? 1.05 : 1 }}
+              whileTap={{ scale: textInput.trim() ? 0.95 : 1 }}
+            >
+              <Send className={config.icon} />
+            </motion.button>
+          </motion.div>
+        ) : (
+          // Voice Control Mode
+          <motion.div
+            key="voice-mode"
+            className="flex items-center justify-between w-full"
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.9 }}
+            transition={{ duration: 0.3 }}
+          >
+            {/* Text Mode Toggle Button */}
+            <motion.button
+              onClick={handleTextModeToggle}
+              className={cn(
+                'relative flex items-center justify-center rounded-full',
+                'transition-all duration-200',
+                'hover:scale-105 active:scale-95',
+                config.button,
+                'text-white/60 hover:text-white/80'
+              )}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              <MessageSquare className={config.icon} />
+            </motion.button>
+
+            {/* Voice Control Button (Main) */}
+            <motion.button
+              onClick={handleVoiceToggle}
+              disabled={connectionStatus !== 'connected'}
+              className={cn(
+                'relative flex items-center justify-center rounded-full',
+                'transition-all duration-300',
+                'hover:scale-105 active:scale-95',
+                config.voiceButton,
+                // Connection status styling
+                connectionStatus === 'connected' && (!isTextMode && isLive && isRecording) 
+                  ? 'bg-gradient-to-br from-white/40 to-white/25 text-white shadow-xl shadow-white/40 ring-2 ring-white/30 backdrop-blur-sm' 
+                  : connectionStatus === 'connected' 
+                    ? 'text-white/70 hover:text-white/90 hover:bg-white/5'
+                    : connectionStatus === 'connecting'
+                      ? 'text-yellow-400/70 animate-pulse'
+                      : connectionStatus === 'error'
+                        ? 'text-red-400/70'
+                        : 'text-white/40',
+              )}
+              whileHover={{ scale: connectionStatus === 'connected' ? 1.05 : 1 }}
+              whileTap={{ scale: connectionStatus === 'connected' ? 0.95 : 1 }}
+            >
+              {/* Connection status indicator */}
+              <div className={cn(
+                'absolute -top-1 -right-1 w-3 h-3 rounded-full border-2 border-black/50',
+                connectionStatus === 'connected' ? 'bg-green-500' :
+                connectionStatus === 'connecting' ? 'bg-yellow-500 animate-pulse' :
+                connectionStatus === 'error' ? 'bg-red-500' :
+                'bg-gray-500'
+              )} />
+              <motion.span 
+                className={config.voiceIcon}
+                animate={{ 
+                  scale: (!isTextMode && isLive && isRecording) ? 1.15 : 1,
+                  rotate: (!isTextMode && isLive && isRecording) ? [0, 8, -8, 0] : 0
+                }}
+                transition={{ 
+                  duration: 0.4,
+                  rotate: { duration: 0.8, ease: "easeInOut" },
+                  scale: { duration: 0.3, ease: "easeOut" }
+                }}
+              >
+                {getVoiceIcon()}
+              </motion.span>
+              
+              {/* Active state glow effect */}
+              <AnimatePresence>
+                {isLive && isRecording && (
+                  <motion.div
+                    className="absolute -inset-2 rounded-full bg-white/10 blur-md"
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.8 }}
+                    transition={{ duration: 0.3 }}
+                  />
+                )}
+              </AnimatePresence>
+
+              {/* Pulse animation for recording states */}
+              <AnimatePresence>
+                {isLive && isRecording && (
+                  <>
+                    <motion.div
+                      key={`pulse-1-${pulseKey}`}
+                      className="absolute inset-0 rounded-full border-2 border-white/70"
+                      initial={{ scale: 1, opacity: 0.9 }}
+                      animate={{ scale: 1.6, opacity: 0 }}
+                      transition={{ duration: 1.5, ease: 'easeOut' }}
+                    />
+                    <motion.div
+                      key={`pulse-2-${pulseKey}`}
+                      className="absolute inset-0 rounded-full border-2 border-white/50"
+                      initial={{ scale: 1, opacity: 0.7 }}
+                      animate={{ scale: 2.2, opacity: 0 }}
+                      transition={{ duration: 2, ease: 'easeOut', delay: 0.3 }}
+                    />
+                  </>
+                )}
+              </AnimatePresence>
+
+              {/* Breathing animation for speaking state */}
+              <AnimatePresence>
+                {voiceState === 'speaking' && (
+                  <motion.div
+                    className="absolute inset-1 rounded-full bg-white/10"
+                    initial={{ scale: 0.8, opacity: 0 }}
+                    animate={{ 
+                      scale: [0.8, 1, 0.8],
+                      opacity: [0, 0.3, 0]
+                    }}
+                    transition={{ 
+                      duration: 1.5,
+                      ease: 'easeInOut',
+                      repeat: Infinity
+                    }}
+                  />
+                )}
+              </AnimatePresence>
+            </motion.button>
+
+            {/* Configurable Action Button */}
+            <motion.button
+              onClick={() => console.log('Config action')}
+              className={cn(
+                'relative flex items-center justify-center rounded-full',
+                'text-white/60',
+                'hover:text-white/80',
+                'transition-all duration-200',
+                'hover:scale-105 active:scale-95',
+                config.button,
+              )}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              {configIcon}
+            </motion.button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      </motion.div>
+      
+      {/* CSS for glow animation */}
+      <style jsx global>{`
+        @property --glow-angle {
+          syntax: '<angle>';
+          initial-value: 0deg;
+          inherits: false;
+        }
+
+        @keyframes glow-rotate {
+          to {
+            --glow-angle: 360deg;
+          }
+        }
+      `}</style>
+    </>
+  );
+}
+
+// Export additional components for customization
+export const VoiceControlButton = motion.button;
+export const ControlTrayContainer = motion.div;
+
+// Preset configurations
+export const presetConfigs = {
+  minimal: {
+    size: 'sm' as const,
+    variant: 'minimal' as const,
+    configIcon: <MoreHorizontal className="h-3.5 w-3.5" />,
+  },
+  standard: {
+    size: 'md' as const,
+    variant: 'default' as const,
+    configIcon: <Settings className="h-4 w-4" />,
+  },
+  premium: {
+    size: 'lg' as const,
+    variant: 'default' as const,
+    configIcon: <Download className="h-5 w-5" />,
+  },
+};

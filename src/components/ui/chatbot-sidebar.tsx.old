@@ -1,0 +1,153 @@
+'use client';
+
+import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { X, MessageSquare, ChevronDown } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { useAIAssistant } from '@/contexts/ai-assistant-context';
+import SimpleChatbot from './simple-chatbot';
+
+interface ChatbotSidebarProps {
+  isOpen: boolean;
+  onClose: () => void;
+  className?: string;
+  connected?: boolean;
+  logs?: unknown[];
+  onFilterChange?: (filter: string) => void;
+}
+
+export function ChatbotSidebar({ 
+  isOpen, 
+  onClose, 
+  className, 
+  logs = [], 
+  onFilterChange 
+}: ChatbotSidebarProps) {
+  const { selectedFilter, connectionStatus, setSelectedFilter } = useAIAssistant();
+  const connected = connectionStatus === 'connected';
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+
+  const filterOptions = ['Tools', 'Conversation', 'All'];
+
+  const handleFilterSelect = (filter: string) => {
+    setIsDropdownOpen(false);
+    setSelectedFilter(filter);
+    onFilterChange?.(filter);
+  };
+
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          className={cn(
+            'fixed left-0 top-0 h-full w-96 bg-background border-r border-border z-[100]',
+            'shadow-2xl flex flex-col',
+            className
+          )}
+          initial={{ x: '-100%' }}
+          animate={{ x: 0 }}
+          exit={{ x: '-100%' }}
+          transition={{
+            type: 'tween',
+            duration: 0.3,
+            ease: [0.25, 0.46, 0.45, 0.94]
+          }}
+        >
+          {/* AI Assistant Header */}
+          <div className="flex items-center justify-between p-4 border-b border-border shrink-0">
+            <div className="flex items-center gap-2">
+              <div className="p-2 rounded-full bg-rose-500/10">
+                <MessageSquare className="h-4 w-4 text-rose-500" />
+              </div>
+              <h2 className="text-lg font-semibold">AI Assistant</h2>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={onClose}
+                className="p-2 rounded-full hover:bg-muted transition-colors"
+                title="Close sidebar"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+
+          {/* Filter and Status Section */}
+          <div className="p-4 border-b border-border shrink-0 space-y-4">
+            {/* Filter Dropdown Section */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-muted-foreground">Filter</label>
+              <div className="relative">
+                <button
+                  onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                  className="w-full flex items-center justify-between px-3 py-2 text-sm border border-border rounded-md hover:bg-muted transition-colors focus:outline-none focus:ring-2 focus:ring-rose-500/20"
+                >
+                  <span className="font-medium">{selectedFilter}</span>
+                  <ChevronDown className={cn(
+                    "h-4 w-4 transition-transform duration-200",
+                    isDropdownOpen && "rotate-180"
+                  )} />
+                </button>
+                
+                <AnimatePresence>
+                  {isDropdownOpen && (
+                    <motion.div
+                      className="absolute top-full left-0 right-0 mt-1 bg-background border border-border rounded-md shadow-lg z-[200] overflow-hidden"
+                      initial={{ opacity: 0, y: -10, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                      transition={{ duration: 0.15 }}
+                    >
+                      {filterOptions.map((option, index) => (
+                        <button
+                          key={option}
+                          onClick={() => handleFilterSelect(option)}
+                          className={cn(
+                            "w-full px-3 py-2 text-sm text-left hover:bg-muted transition-colors",
+                            selectedFilter === option && "bg-rose-500/10 text-rose-500 font-medium",
+                            index === 0 && "rounded-t-md",
+                            index === filterOptions.length - 1 && "rounded-b-md"
+                          )}
+                        >
+                          {option}
+                        </button>
+                      ))}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            </div>
+
+            {/* API Status Section */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-muted-foreground">Live API Status</label>
+              <div className="flex items-center gap-2">
+                <div className={cn(
+                  "w-2 h-2 rounded-full",
+                  connectionStatus === 'connected' ? "bg-green-500" : 
+                  connectionStatus === 'connecting' ? "bg-yellow-500" :
+                  connectionStatus === 'error' ? "bg-red-500" : "bg-gray-500"
+                )} />
+                <span className="text-sm capitalize">
+                  {connectionStatus === 'connected' ? 'Connected' : 
+                   connectionStatus === 'connecting' ? 'Connecting...' :
+                   connectionStatus === 'error' ? 'Error' : 'Disconnected'}
+                </span>
+              </div>
+              
+              {/* Last Activity */}
+              <div className="text-xs text-muted-foreground">
+                Last activity: {new Date().toLocaleTimeString()}
+              </div>
+            </div>
+          </div>
+          
+          {/* Chatbot Content */}
+          <div className="flex-1 overflow-hidden h-full">
+            <SimpleChatbot />
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}

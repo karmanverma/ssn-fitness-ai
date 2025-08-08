@@ -1,0 +1,14 @@
+{
+  "name": "gradient-bars",
+  "type": "registry:ui",
+  "dependencies": [],
+  "registryDependencies": [],
+  "files": [
+    {
+      "type": "registry:ui",
+      "content": "'use client';\n\nimport { motion } from 'motion/react';\n\ninterface GradientBarsProps {\n  bars?: number;\n  colors?: string[];\n}\n\nexport const GradientBars = ({\n  bars = 20,\n  colors = ['#e60a64', 'transparent'],\n}: GradientBarsProps) => {\n  const gradientStyle = `linear-gradient(to top, ${colors.join(', ')})`;\n  return (\n    <div className=\"absolute inset-0 z-0 overflow-hidden\">\n      <div className=\"flex h-full w-full\">\n        {Array.from({ length: bars }).map((_, index) => {\n          const position = index / (bars - 1);\n          const center = 0.5;\n          const distance = Math.abs(position - center);\n          const scale = 0.3 + 0.7 * Math.pow(distance * 2, 1.2);\n\n          return (\n            <motion.div\n              key={`bg-bar-${index}`}\n              className=\"flex-1 origin-bottom\"\n              style={{ background: gradientStyle }}\n              animate={{\n                scaleY: [scale, scale + 0.1, scale],\n                opacity: [1, 0.95, 1],\n              }}\n              transition={{\n                duration: 3,\n                ease: 'easeInOut',\n                repeat: Infinity,\n                repeatType: 'mirror',\n                delay: index * 0.5,\n              }}\n            />\n          );\n        })}\n      </div>\n    </div>\n  );\n};\n",
+      "path": "/components/ui/gradient-bars.tsx",
+      "target": "components/ui/gradient-bars.tsx"
+    }
+  ]
+}

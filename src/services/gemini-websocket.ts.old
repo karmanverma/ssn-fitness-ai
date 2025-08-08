@@ -1,0 +1,168 @@
+export class GeminiWebSocketService {
+  private ws: WebSocket | null = null;
+  private reconnectAttempts = 0;
+  private maxReconnectAttempts = 5;
+  private messageQueue: unknown[] = [];
+  private isConnected = false;
+  private reconnectTimer: NodeJS.Timeout | null = null;
+
+  constructor(
+    private onMessage: (message: unknown) => void,
+    private onError: (error: Error) => void,
+    private onStatusChange: (status: string) => void
+  ) {}
+
+  async connect(apiKey: string): Promise<void> {
+    try {
+      console.log('🔌 WebSocket connecting...');
+      this.onStatusChange('connecting');
+      
+      // Correct Gemini Live API WebSocket endpoint
+      const url = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=${apiKey}`;
+      console.log('🌐 WebSocket URL:', url.replace(apiKey, 'API_KEY_HIDDEN'));
+      
+      this.ws = new WebSocket(url);
+      
+      this.ws.onopen = this.handleOpen.bind(this);
+      this.ws.onmessage = this.handleMessage.bind(this);
+      this.ws.onerror = this.handleError.bind(this);
+      this.ws.onclose = this.handleClose.bind(this);
+
+      await new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          reject(new Error('Connection timeout'));
+        }, 10000);
+
+        this.ws!.onopen = () => {
+          clearTimeout(timeout);
+          this.handleOpen();
+          resolve(void 0);
+        };
+
+        this.ws!.onerror = (error) => {
+          clearTimeout(timeout);
+          reject(error);
+        };
+      });
+    } catch (error) {
+      this.onError(error as Error);
+      throw error;
+    }
+  }
+
+  private handleOpen(): void {
+    console.log('✅ WebSocket connected successfully');
+    this.isConnected = true;
+    this.reconnectAttempts = 0;
+    this.onStatusChange('connected');
+    
+    // Process queued messages immediately
+    if (this.messageQueue.length > 0) {
+      console.log(`📦 Sending ${this.messageQueue.length} queued messages`);
+      while (this.messageQueue.length > 0) {
+        const message = this.messageQueue.shift();
+        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+          console.log('🚀 Sending queued message:', message);
+          this.ws.send(JSON.stringify(message));
+        }
+      }
+    }
+  }
+
+  private handleMessage(event: MessageEvent): void {
+    try {
+      const message = JSON.parse(event.data);
+      console.log('📨 Received WebSocket message:', message);
+      this.onMessage(message);
+    } catch (error) {
+      console.error('❌ Failed to parse WebSocket message:', event.data);
+      this.onError(new Error('Failed to parse message'));
+    }
+  }
+
+  private handleError(error: Event): void {
+    console.error('❌ WebSocket error:', error);
+    this.onError(new Error('WebSocket error'));
+  }
+
+  private handleClose(event: CloseEvent): void {
+    this.isConnected = false;
+    this.onStatusChange('disconnected');
+    
+    if (event.code !== 1000 && this.reconnectAttempts < this.maxReconnectAttempts) {
+      this.attemptReconnect();
+    }
+  }
+
+  private async attemptReconnect(): Promise<void> {
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+    }
+    
+    this.reconnectAttempts++;
+    console.log(`🔄 Reconnection attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts}`);
+    this.onStatusChange('reconnecting');
+    
+    const delay = Math.min(Math.pow(2, this.reconnectAttempts) * 1000, 30000); // Max 30s delay
+    
+    this.reconnectTimer = setTimeout(async () => {
+      try {
+        const apiKey = process.env.NEXT_PUBLIC_GOOGLE_AI_API_KEY;
+        if (!apiKey) {
+          throw new Error('API key not found');
+        }
+        await this.connect(apiKey);
+      } catch (error) {
+        console.error(`❌ Reconnection attempt ${this.reconnectAttempts} failed:`, error);
+        if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+          this.onError(new Error('Max reconnection attempts reached'));
+          this.onStatusChange('error');
+        } else {
+          this.attemptReconnect();
+        }
+      }
+    }, delay);
+  }
+
+  send(message: unknown): void {
+    if (this.isConnected && this.ws && this.ws.readyState === WebSocket.OPEN) {
+      console.log('🚀 Sending WebSocket message:', message);
+      this.ws.send(JSON.stringify(message));
+    } else {
+      console.log('📦 Queuing message (WebSocket not ready):', message);
+      console.log('🔍 Connection state - isConnected:', this.isConnected, 'readyState:', this.ws?.readyState);
+      this.messageQueue.push(message);
+    }
+  }
+
+  sendSetup(config: unknown): void {
+    this.send({ setup: config });
+  }
+
+  sendRealtimeInput(input: unknown): void {
+    this.send({ realtimeInput: input });
+  }
+
+  sendClientContent(content: unknown): void {
+    this.send({ clientContent: content });
+  }
+
+  disconnect(): void {
+    console.log('🔌 Disconnecting WebSocket...');
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
+    if (this.ws) {
+      this.ws.close(1000, 'Client disconnect');
+      this.ws = null;
+    }
+    this.isConnected = false;
+    this.reconnectAttempts = 0;
+    this.onStatusChange('disconnected');
+  }
+
+  getConnectionStatus(): string {
+    return this.isConnected ? 'connected' : 'disconnected';
+  }
+}
