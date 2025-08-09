@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useEnhancedAIAssistant } from '@/contexts/enhanced-ai-assistant-context';
+import { useAuth } from '@/contexts/auth-context';
 import { ReportStorage } from '@/lib/report-storage';
 import { Report } from '@/types/report';
 import { 
@@ -16,13 +17,15 @@ import {
   Edit3,
   Trash2,
   Plus,
-  MessageSquare
+  MessageSquare,
+  Lock
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
 
 export default function ReportPage() {
   const router = useRouter();
+  const { user, loading } = useAuth();
   const { 
     currentReport, 
     reports, 
@@ -97,9 +100,43 @@ export default function ReportPage() {
       .replace(/\n/g, '<br>');
   };
 
+  // Authentication check
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4 pt-24">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-rose-500 mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4 pt-24">
+        <div className="text-center max-w-md">
+          <Lock className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+          <h1 className="text-2xl font-semibold mb-2">Authentication Required</h1>
+          <p className="text-muted-foreground mb-6">
+            You need to be logged in to view your reports.
+          </p>
+          <button
+            onClick={() => {
+              window.dispatchEvent(new Event('showAuthModal'));
+            }}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-rose-500 text-white rounded-lg hover:bg-rose-600 transition-colors"
+          >
+            Sign In
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   if (reports.length === 0 && !isGeneratingReport) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+      <div className="min-h-screen bg-background flex items-center justify-center p-4 pt-24">
         <div className="text-center max-w-md">
           <FileText className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
           <h1 className="text-2xl font-semibold mb-2">No Reports Yet</h1>
@@ -119,10 +156,10 @@ export default function ReportPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
-        <div className="container mx-auto px-4 py-4">
+    <div className="min-h-screen bg-background pt-20">
+      {/* Page Header */}
+      <div className="border-b border-border bg-background">
+        <div className="container mx-auto px-4 py-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <button
@@ -171,7 +208,7 @@ export default function ReportPage() {
             </div>
           </div>
         </div>
-      </header>
+      </div>
 
       <div className="container mx-auto px-4 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">

@@ -1,7 +1,9 @@
 'use client';
 
-import Features from '@/components/home/features';
 import Hero from '@/components/home/hero';
+import WhatWeProvide from '@/components/home/what-we-provide';
+import AIServiceSections from '@/components/home/ai-service-section';
+import ExpertCTA from '@/components/home/expert-cta';
 import dynamic from 'next/dynamic';
 
 const Gallery = dynamic(() => import('@/components/home/gallery'), {
@@ -20,7 +22,9 @@ export default function Homepage() {
   return (
     <>
       <Hero />
-      <Features />
+      <WhatWeProvide />
+      <AIServiceSections />
+
       <Gallery />
       <Testimonials />
       <CTA />

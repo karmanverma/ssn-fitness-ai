@@ -8,6 +8,8 @@ import { DEFAULT_TOOLS } from '@/lib/function-declarations';
 import { Report, ReportGenerationProgress } from '@/types/report';
 import { ReportStorage } from '@/lib/report-storage';
 import { useRouter } from 'next/navigation';
+import { interactionLogger } from '@/lib/interaction-logger';
+import { createClient } from '@/lib/supabase/client';
 
 // Types
 interface GeminiMessage {
@@ -115,6 +117,11 @@ export function useEnhancedAIAssistant() {
 
 export function EnhancedAIAssistantProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
+  const supabase = createClient();
+  
+  // Generate unique session ID
+  const [currentSessionId] = useState(() => `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   
   // Connection state
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('disconnected');
@@ -147,7 +154,27 @@ export function EnhancedAIAssistantProvider({ children }: { children: React.Reac
   // Configuration state
   const [voiceName, setVoiceName] = useState('Aoede');
   const [systemInstructions, setSystemInstructions] = useState(
-    'You are a helpful AI assistant for MVP Blocks, a component library. Help users with UI components, design patterns, and development questions. When users ask for reports, analysis, or summaries, use the generateReport function to create comprehensive markdown reports. You can also list, read, and update existing reports using the available functions. Keep responses concise and practical.'
+    `You are an AI fitness assistant for SSN Fitness, powered by Sri Sai Nutritions - a leading health and supplements supplier. Your role is to help users with:
+
+1. FITNESS CONSULTATIONS - Provide personalized fitness assessments, training guidance, and wellness evaluations
+2. WORKOUT PLANS - Create custom training programs for strength, cardio, flexibility, bodyweight, bulking, cutting, and mobility
+3. SUPPLEMENT GUIDANCE - Recommend protein supplements, vitamins, pre/post workout nutrition, and energy boosters
+4. HEALTH CALCULATORS - Help with BMI, BMR, calorie tracking, and macro calculations
+
+When users need fitness reports or plans:
+1. Use scrollToSection to navigate to relevant sections
+2. Use switchSectionMode to enable AI generation mode
+3. Use collectUserInfo to gather necessary details (fitness level, goals, equipment, time, health conditions)
+4. Use generateFitnessReport to create comprehensive, personalized plans
+
+Always:
+- Ask for user authentication before generating reports
+- Collect relevant user information step by step
+- Provide actionable, safe, and personalized advice
+- Reference Sri Sai Nutritions expertise
+- Keep responses encouraging and professional
+
+You can interact via voice or text based on user preference.`
   );
   const [responseModality, setResponseModality] = useState<'TEXT' | 'AUDIO' | 'TEXT_AND_AUDIO'>('TEXT_AND_AUDIO');
   const [toolsEnabled, setToolsEnabled] = useState(true);
@@ -156,11 +183,20 @@ export function EnhancedAIAssistantProvider({ children }: { children: React.Reac
   const clientRef = useRef<GeminiLiveClient>();
   const audioManagerRef = useRef<AudioManager>();
   
-  // Load reports from storage on mount
+  // Load reports from storage and get user ID on mount
   useEffect(() => {
     const storedReports = ReportStorage.getAllReports();
     setReports(storedReports);
-  }, []);
+    
+    // Get current user ID
+    const getCurrentUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        setCurrentUserId(user.id);
+      }
+    };
+    getCurrentUser();
+  }, [supabase.auth]);
 
   // Initialize services
   useEffect(() => {
@@ -184,6 +220,13 @@ export function EnhancedAIAssistantProvider({ children }: { children: React.Reac
     client.on('open', () => {
       console.log('✅ Gemini Live API connected');
       setConnectionStatus('connected');
+      
+      // Log session start
+      interactionLogger.logSessionStart(currentSessionId, currentUserId || undefined, {
+        model: 'gemini-2.0-flash-exp',
+        mode: uiMode,
+        voice: voiceName
+      });
     });
     
     client.on('close', () => {
@@ -192,6 +235,11 @@ export function EnhancedAIAssistantProvider({ children }: { children: React.Reac
       setIsRecording(false);
       setIsPlaying(false);
       setVoiceState('idle');
+      
+      // Log session end
+      interactionLogger.logSessionEnd(currentSessionId, currentUserId || undefined, {
+        reason: 'connection_closed'
+      });
     });
     
     client.on('error', (error) => {
@@ -200,6 +248,11 @@ export function EnhancedAIAssistantProvider({ children }: { children: React.Reac
       setIsRecording(false);
       setIsPlaying(false);
       setVoiceState('idle');
+      
+      // Log error
+      interactionLogger.logError(currentSessionId, error, currentUserId || undefined, {
+        context: 'gemini_live_api'
+      });
     });
     
     client.on('setupcomplete', () => {
@@ -213,6 +266,12 @@ export function EnhancedAIAssistantProvider({ children }: { children: React.Reac
         const textPart = content.modelTurn.parts.find(part => 'text' in part);
         if (textPart && 'text' in textPart) {
           const text = textPart.text as string;
+          
+          // Log assistant response
+          interactionLogger.logAssistantResponse(currentSessionId, text, currentUserId || undefined, {
+            tokens: content.metadata?.tokens,
+            finishReason: content.metadata?.finishReason
+          });
           
           // Add complete message to history
           const newMessage: GeminiMessage = {
@@ -233,6 +292,14 @@ export function EnhancedAIAssistantProvider({ children }: { children: React.Reac
       console.log('🔊 Audio received:', audioData.byteLength, 'bytes');
       setVoiceState('speaking');
       audioManagerRef.current?.playAudio(audioData);
+      
+      // Log audio output
+      interactionLogger.logAudioOutput(currentSessionId, {
+        size: audioData.byteLength
+      }, currentUserId || undefined, {
+        format: 'pcm',
+        sample_rate: 16000
+      });
     });
     
     client.on('turncomplete', () => {
@@ -250,6 +317,14 @@ export function EnhancedAIAssistantProvider({ children }: { children: React.Reac
 
     client.on('toolcall', (toolCall) => {
       console.log('🔧 Tool call received:', toolCall);
+      
+      // Log tool call
+      if (toolCall.functionCalls) {
+        toolCall.functionCalls.forEach((call: any) => {
+          interactionLogger.logToolCall(currentSessionId, call, currentUserId || undefined);
+        });
+      }
+      
       handleToolCall(toolCall);
     });
 
@@ -265,6 +340,13 @@ export function EnhancedAIAssistantProvider({ children }: { children: React.Reac
         console.log('🎤 Audio chunk received:', chunk.mimeType, chunk.data.length, 'chars');
         if (client.isConnected()) {
           client.sendRealtimeInput([chunk]);
+          
+          // Log audio input
+          interactionLogger.logAudioInput(currentSessionId, {
+            size: chunk.data.length
+          }, currentUserId || undefined, {
+            mime_type: chunk.mimeType
+          });
         } else {
           console.warn('⚠️ Cannot send audio chunk: client not connected');
         }
@@ -279,8 +361,16 @@ export function EnhancedAIAssistantProvider({ children }: { children: React.Reac
 
     // Cleanup
     return () => {
+      // Log session end before cleanup
+      interactionLogger.logSessionEnd(currentSessionId, currentUserId || undefined, {
+        reason: 'component_unmount'
+      });
+      
       client.disconnect();
       audioManagerRef.current?.dispose();
+      
+      // Force flush any pending logs
+      interactionLogger.forceFlush();
     };
   }, []);
 
@@ -292,15 +382,15 @@ export function EnhancedAIAssistantProvider({ children }: { children: React.Reac
       const { name, args, id } = functionCall;
       
       try {
-        if (name === 'generateReport') {
-          const { title, content, category, tags = [] } = args;
+        if (name === 'generateFitnessReport') {
+          const { title, content, category, tags = [], userInfo } = args;
           
-          // Create new report
+          // Create new fitness report
           const report: Report = {
             id: Date.now().toString(),
             title,
             content,
-            category: category || 'other',
+            category: category || 'fitness',
             tags,
             createdAt: Date.now(),
             updatedAt: Date.now(),
@@ -308,7 +398,8 @@ export function EnhancedAIAssistantProvider({ children }: { children: React.Reac
             metadata: {
               wordCount: content.split(' ').length,
               estimatedReadTime: Math.ceil(content.split(' ').length / 200),
-              source: 'conversation'
+              source: 'ai-fitness-assistant',
+              userInfo: userInfo || {}
             }
           };
           
@@ -322,11 +413,75 @@ export function EnhancedAIAssistantProvider({ children }: { children: React.Reac
           
           // Send tool response
           if (clientRef.current) {
+            const toolResponse = {
+              name,
+              id,
+              response: { success: true, reportId: report.id, message: 'Fitness report generated successfully!' }
+            };
+            
+            clientRef.current.sendToolResponse({
+              functionResponses: [toolResponse]
+            });
+            
+            // Log tool response
+            interactionLogger.logToolResponse(currentSessionId, toolResponse, currentUserId || undefined);
+          }
+        } else if (name === 'scrollToSection') {
+          const { sectionId } = args;
+          
+          // Scroll to section
+          const element = document.getElementById(sectionId);
+          if (element) {
+            element.scrollIntoView({ behavior: 'smooth' });
+          }
+          
+          if (clientRef.current) {
+            const toolResponse = {
+              name,
+              id,
+              response: { success: true, message: `Scrolled to ${sectionId} section` }
+            };
+            
+            clientRef.current.sendToolResponse({
+              functionResponses: [toolResponse]
+            });
+            
+            // Log tool response
+            interactionLogger.logToolResponse(currentSessionId, toolResponse, currentUserId || undefined);
+          }
+        } else if (name === 'switchSectionMode') {
+          const { sectionId, mode } = args;
+          
+          // Dispatch custom event to switch section mode
+          window.dispatchEvent(new CustomEvent('switchSectionMode', {
+            detail: { sectionId, mode }
+          }));
+          
+          if (clientRef.current) {
             clientRef.current.sendToolResponse({
               functionResponses: [{
                 name,
                 id,
-                response: { success: true, reportId: report.id }
+                response: { success: true, message: `Switched ${sectionId} to ${mode} mode` }
+              }]
+            });
+          }
+        } else if (name === 'collectUserInfo') {
+          const { infoType, question } = args;
+          
+          // This function indicates what info is being collected
+          // The actual collection happens through conversation
+          if (clientRef.current) {
+            clientRef.current.sendToolResponse({
+              functionResponses: [{
+                name,
+                id,
+                response: { 
+                  success: true, 
+                  infoType, 
+                  question,
+                  message: `Collecting ${infoType} information from user` 
+                }
               }]
             });
           }
@@ -485,8 +640,14 @@ export function EnhancedAIAssistantProvider({ children }: { children: React.Reac
       mode 
     });
     
-    if (!clientRef.current || connectionStatus === 'connecting') {
-      console.log('⚠️ Early return from connect:', { hasClient: !!clientRef.current, connectionStatus });
+    if (!clientRef.current) {
+      console.error('❌ Gemini client not initialized');
+      setConnectionStatus('error');
+      return;
+    }
+    
+    if (connectionStatus === 'connecting') {
+      console.log('⚠️ Already connecting, skipping');
       return;
     }
 
@@ -537,8 +698,13 @@ export function EnhancedAIAssistantProvider({ children }: { children: React.Reac
       connectionStatus 
     });
     
-    if (!audioManagerRef.current || isRecording) {
-      console.log('⚠️ Early return:', { hasAudioManager: !!audioManagerRef.current, isRecording });
+    if (!audioManagerRef.current) {
+      console.error('❌ Audio manager not initialized');
+      return;
+    }
+    
+    if (isRecording) {
+      console.log('⚠️ Already recording, skipping');
       return;
     }
 
@@ -601,21 +767,32 @@ export function EnhancedAIAssistantProvider({ children }: { children: React.Reac
   // Send text message
   const sendTextMessage = useCallback(async (message: string) => {
     if (!message.trim()) {
+      console.warn('⚠️ Empty message, skipping');
+      return;
+    }
+
+    if (!clientRef.current) {
+      console.error('❌ Gemini client not initialized');
       return;
     }
 
     // Ensure connection with text mode
-    if (!clientRef.current?.isConnected()) {
+    if (!clientRef.current.isConnected()) {
+      console.log('🔗 Connecting for text message...');
       await connect('text');
       // Wait for connection to be established
       await new Promise(resolve => setTimeout(resolve, 1000));
     }
 
-    if (!clientRef.current?.isConnected()) {
-      console.error('❌ Cannot send message: not connected');
+    if (!clientRef.current.isConnected()) {
+      console.error('❌ Cannot send message: connection failed');
+      setConnectionStatus('error');
       return;
     }
 
+    // Log user message
+    interactionLogger.logUserMessage(currentSessionId, message, currentUserId || undefined);
+    
     // Add user message to history
     const userMessage: GeminiMessage = {
       id: Date.now().toString(),

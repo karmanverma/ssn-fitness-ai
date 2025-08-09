@@ -7,29 +7,29 @@ import { useState } from 'react';
 
 const faqs = [
   {
-    question: 'What is Mvpblocks exactly?',
+    question: 'What is SSN Fitness exactly?',
     answer:
-      'Mvpblocks is a collection of plug-and-play UI sections built with Tailwind and Framer Motion, ready to be copy-pasted into your next MVP, landing page, or SaaS project.',
+      'SSN Fitness is an AI-powered fitness platform by Sri Sai Nutritions, offering personalized consultations, custom workout plans, expert supplement guidance, and powerful health tracking tools.',
   },
   {
-    question: 'Do I need to know Tailwind to use it?',
+    question: 'Are the consultations really free?',
     answer:
-      'Not necessarily! The blocks come with clean, readable code. If you’ve used HTML before, you can easily customize styles even without deep Tailwind knowledge.',
+      "Yes! We're currently offering free consultation sessions with our expert Dherya Bajaj as a limited-time promotion. This includes personalized fitness assessments and guidance.",
   },
   {
-    question: 'Can I use these blocks commercially?',
+    question: 'What types of consultation do you offer?',
     answer:
-      'Absolutely. All components are free to use for personal and commercial projects. No attribution needed—just build and launch.',
+      'We offer fitness consultations, nutrition coaching, supplement guidance, and general wellness assessments. You can choose your preferred consultation type when booking.',
   },
   {
-    question: 'Are the blocks responsive and accessible?',
+    question: 'How do the AI-powered features work?',
     answer:
-      'Yes! All blocks are designed to be fully responsive and follow accessibility best practices out of the box.',
+      'Our AI analyzes your fitness data, goals, and preferences to provide personalized workout plans, supplement recommendations, and health insights tailored specifically to your needs.',
   },
   {
-    question: 'How do I integrate a block into my project?',
+    question: 'Do I need any special equipment for the workout plans?',
     answer:
-      'Just copy the code snippet, paste it into your project (e.g., Next.js, Vite, or plain HTML), and you’re good to go. Smooth and instant.',
+      'Not necessarily! We offer various workout plans including bodyweight exercises that require no equipment, as well as gym-based and home equipment routines to suit your situation.',
   },
 ];
 

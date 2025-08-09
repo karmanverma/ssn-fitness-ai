@@ -9,46 +9,46 @@ import { Quote } from 'lucide-react';
 
 const defaultTestimonials = [
   {
-    text: 'MVPBlocks has completely changed the way I build UIs. Copy-paste, done. No more design stress.',
+    text: 'Dherya\'s nutrition consultation completely transformed my fitness journey. Lost 15kg in 4 months with Sri Sai products!',
     imageSrc: '/assets/avatars/avatar-1.webp',
     name: 'Arjun Mehta',
-    username: '@arjdev',
-    role: 'Frontend Developer',
+    username: '@arjunfit',
+    role: 'Fitness Enthusiast',
   },
   {
-    text: 'Honestly shocked at how smooth the animations and styling are out of the box. Just works.',
+    text: 'The SSN Fitness Platform is incredible! Personalized workouts and nutrition tracking made everything so simple.',
     imageSrc: '/assets/avatars/avatar-2.webp',
     name: 'Sara Lin',
-    username: '@sara.codes',
-    role: 'UX Designer',
+    username: '@sara_fitness',
+    role: 'Working Professional',
   },
   {
-    text: 'Our team launched a client site in 2 days using MVPBlocks. Saved so much time.',
+    text: 'Sri Sai Nutrition whey protein is the best I\'ve tried. Great taste, amazing results, and Dherya\'s guidance is top-notch.',
     imageSrc: '/assets/avatars/avatar-3.webp',
     name: 'Devon Carter',
-    username: '@devninja',
-    role: 'Product Manager',
+    username: '@devonfitness',
+    role: 'Bodybuilder',
   },
   {
-    text: 'Plugged a few blocks into our existing codebase and everything blended perfectly. Massive W.',
+    text: 'Dherya\'s consultation helped me understand my body better. The customized diet plan with Sri Sai supplements works perfectly.',
     imageSrc: '/assets/avatars/avatar-4.webp',
     name: 'Priya Shah',
-    username: '@priyacodes',
-    role: 'Full Stack Developer',
+    username: '@priya_wellness',
+    role: 'Yoga Instructor',
   },
   {
-    text: 'Found a beautiful hero section, dropped it into V0, tweaked copy, and shipped in 15 minutes.',
+    text: 'SSN Fitness Platform\'s meal planning feature is a game-changer. Combined with Dherya\'s expertise, I\'m in the best shape ever!',
     imageSrc: '/assets/avatars/avatar-5.webp',
     name: 'Leo Martin',
-    username: '@leobuilds',
-    role: 'Startup Founder',
+    username: '@leo_gains',
+    role: 'Athlete',
   },
   {
-    text: 'MVPBlocks helped us prototype multiple landing pages without writing CSS once.',
+    text: 'Sri Sai Nutrition products are pure quality. Dherya\'s consultation made me realize what my body actually needed.',
     imageSrc: '/assets/avatars/avatar-6.webp',
     name: 'Chloe Winters',
-    username: '@chloewinters',
-    role: 'UI Designer',
+    username: '@chloe_strong',
+    role: 'Personal Trainer',
   },
 ];
 
@@ -68,8 +68,8 @@ interface TestimonialProps {
 
 export default function TestimonialsCarousel({
   testimonials = defaultTestimonials,
-  title = 'What our users say',
-  subtitle = 'From intuitive design to powerful features, our components have become essential tools for developers around the world.',
+  title = 'What our clients say',
+  subtitle = 'From personalized nutrition plans to fitness transformations, our platform and Dherya\'s expertise have helped clients achieve their health goals.',
   autoplaySpeed = 3000,
   className,
 }: TestimonialProps) {

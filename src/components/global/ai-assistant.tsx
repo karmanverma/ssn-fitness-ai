@@ -15,44 +15,37 @@ export function GlobalAIAssistant() {
     isStreaming,
   } = useEnhancedAIAssistant();
 
-  const [isInHeroSection, setIsInHeroSection] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [showFixedTray, setShowFixedTray] = useState(true);
 
   useEffect(() => {
-    const checkHeroSection = () => {
-      const isHomepage = window.location.pathname === '/';
+    const handleScroll = () => {
+      if (typeof window === 'undefined') return;
+      
       const heroSection = document.getElementById('hero-section');
-      
-      if (!isHomepage) {
-        setIsInHeroSection(false);
-        return;
-      }
-      
       if (heroSection) {
-        const heroRect = heroSection.getBoundingClientRect();
-        const isInHero = heroRect.bottom > 200; // More space for homepage hero
-        setIsInHeroSection(isInHero);
+        const rect = heroSection.getBoundingClientRect();
+        const isInHero = rect.top <= 100 && rect.bottom > 200;
+        const isLargeScreen = window.innerWidth >= 1024;
+        setShowFixedTray(!(isInHero && isLargeScreen));
+      } else {
+        // If no hero section exists (other pages), always show the tray
+        setShowFixedTray(true);
       }
     };
 
-    // Check initial state
-    checkHeroSection();
-
-    // Add scroll listener only for homepage
-    if (window.location.pathname === '/') {
-      window.addEventListener('scroll', checkHeroSection, { passive: true });
+    if (typeof window !== 'undefined') {
+      window.addEventListener('scroll', handleScroll);
+      window.addEventListener('resize', handleScroll);
+      // Delay initial check to ensure DOM is ready
+      setTimeout(handleScroll, 100);
     }
-    
-    // Listen for route changes
-    const handleRouteChange = () => {
-      setTimeout(checkHeroSection, 100);
-    };
-    
-    window.addEventListener('popstate', handleRouteChange);
 
     return () => {
-      window.removeEventListener('scroll', checkHeroSection);
-      window.removeEventListener('popstate', handleRouteChange);
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('scroll', handleScroll);
+        window.removeEventListener('resize', handleScroll);
+      }
     };
   }, []);
 
@@ -69,7 +62,7 @@ export function GlobalAIAssistant() {
               y: 0,
               left: '50%',
               x: '-50%',
-              bottom: isInHeroSection ? 'calc(6rem + 100px)' : 'calc(2rem + 100px)' // 100px above tray
+              bottom: 'calc(2rem + 100px)' // 100px above tray
             }}
             exit={{ opacity: 0, y: 20 }}
             transition={{
@@ -104,13 +97,16 @@ export function GlobalAIAssistant() {
         animate={{
           left: isSidebarOpen ? 'calc(50% + 192px)' : '50%', // 192px = half of sidebar width (384px/2)
           x: '-50%',
-          bottom: isInHeroSection ? '6rem' : '2rem' // 6rem when in homepage hero, 2rem otherwise
+          bottom: '2rem',
+          opacity: showFixedTray ? 1 : 0,
+          y: showFixedTray ? 0 : 20
         }}
         transition={{
           type: 'tween',
           duration: 0.3,
           ease: [0.25, 0.46, 0.45, 0.94]
         }}
+        style={{ pointerEvents: showFixedTray ? 'auto' : 'none' }}
       >
         <EnhancedAIVoiceControlTray
           size="lg"

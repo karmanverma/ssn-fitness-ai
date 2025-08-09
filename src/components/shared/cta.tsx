@@ -13,17 +13,17 @@ export default function CTA() {
           />
           <div className="absolute inset-0 -top-32 flex flex-col items-center justify-center md:-top-40">
             <h1 className="max-w-xs bg-gradient-to-r from-zinc-200/60 via-zinc-50 to-zinc-200/60 bg-clip-text text-center text-4xl font-medium tracking-tighter text-transparent md:max-w-xl md:text-7xl">
-              Build. Customize. Deploy Quickly.
+              Transform Your Body. Transform Your Life.
             </h1>
             <div className="absolute bottom-16 flex flex-col items-center justify-center gap-2">
               <Link
                 className="flex h-10 w-fit items-center justify-center rounded-full bg-white px-4 text-sm font-semibold text-black shadow-md"
-                href="/docs/introduction"
+                href="/consult"
               >
-                Start with Mvpblocks Today
+                Start Your Fitness Journey
               </Link>
               <span className="text-sm text-white">
-                Built to keep you hooked.
+                Powered by Sri Sai Nutritions expertise.
               </span>
             </div>
           </div>

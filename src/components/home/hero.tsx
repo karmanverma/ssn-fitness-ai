@@ -1,17 +1,18 @@
 'use client';
 
-import { PixelCard } from '../ui/pixelcards';
 import { Geist } from 'next/font/google';
 import { cn } from '@/lib/utils';
-import { CloudLightning, MoveRight } from 'lucide-react';
+import { MoveRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import HomeBadge from '../ui/home-badge';
 import { Beam } from '../ui/gridbeam';
-import { Sparkles } from 'lucide-react';
-import { useEffect, useState } from 'react';
-import { CardHoverEffect } from '../ui/pulse-card';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
+import FitnessFlipCards from './fitness-flip-cards';
+import { EnhancedAIVoiceControlTray } from '@/components/ui/enhanced-ai-voice-control-tray';
+import { useState, useEffect } from 'react';
+import { useEnhancedAIAssistant } from '@/contexts/enhanced-ai-assistant-context';
+import { Spotlight } from '@/components/ui/spotlight';
 
 
 const space = Geist({
@@ -20,84 +21,57 @@ const space = Geist({
   weight: '400',
 });
 
-const PIXEL_SCRIPT_URL =
-  'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/pixel-RKkUKH2OXWk9adKbDnozmndkwseTQh.js';
-
 export default function Hero() {
-  const [isScriptLoaded, setIsScriptLoaded] = useState(false);
+  const [showHeroTray, setShowHeroTray] = useState(false);
+  const { isSidebarOpen } = useEnhancedAIAssistant();
 
   useEffect(() => {
-    // Use Intersection Observer to load the script only when the component is in view
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting) {
-          import('@/lib/load-script').then(({ loadScript }) => {
-            loadScript(PIXEL_SCRIPT_URL)
-              .then(() => {
-                setIsScriptLoaded(true);
-              })
-              .catch((error) => {
-                console.error('Error loading pixel script:', error);
-              });
-          });
-          observer.disconnect();
-        }
-      },
-      { threshold: 0.1 },
-    );
+    const handleScroll = () => {
+      if (typeof window === 'undefined') return;
+      
+      const heroSection = document.getElementById('hero-section');
+      if (heroSection) {
+        const rect = heroSection.getBoundingClientRect();
+        const isInHero = rect.top <= 100 && rect.bottom > 200;
+        const isLargeScreen = window.innerWidth >= 1024;
+        setShowHeroTray(isInHero && isLargeScreen);
+      }
+    };
 
-    const heroElement = document.getElementById('hero-section');
-    if (heroElement) {
-      observer.observe(heroElement);
+    if (typeof window !== 'undefined') {
+      window.addEventListener('scroll', handleScroll);
+      window.addEventListener('resize', handleScroll);
+      // Delay initial check to ensure DOM is ready
+      setTimeout(handleScroll, 100);
     }
 
     return () => {
-      observer.disconnect();
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('scroll', handleScroll);
+        window.removeEventListener('resize', handleScroll);
+      }
     };
   }, []);
-
-  const cards = [
-    {
-      title: 'FITNESS CONSULTATION',
-      description: 'Personalized fitness assessments and expert guidance.',
-      icon: <CloudLightning className="h-full w-full" />,
-      variant: 'rose',
-      showGridLines: true,
-    },
-    {
-      title: 'WORKOUT PLANS',
-      description: 'Custom training programs tailored to your goals.',
-      icon: <Sparkles className="h-full w-full" />,
-      variant: 'rose',
-      showGridLines: true,
-    },
-  ] as const;
-
-  const cardConfigurations = [
-    {
-      color: 'rose',
-      icon: 'Blocks',
-      label: 'Command',
-      canvasProps: { gap: 3, speed: 80, colors: '#fff, #fda4af, #e11d48' },
-      number: 100,
-      desc: 'SUPPLEMENT GUIDANCE',
-    },
-    {
-      color: 'rose',
-      icon: 'f',
-      label: 'Dropper',
-      canvasProps: { gap: 3, speed: 80, colors: '#fff, #fda4af, #e11d48' },
-      number: 15,
-      desc: 'HEALTH CALCULATORS',
-    },
-  ];
 
   return (
     <div
       id="hero-section"
-      className="bg-background relative min-h-screen w-full overflow-x-hidden py-32 md:px-6"
+      className="border-secondary/50 bg-background relative min-h-screen overflow-hidden rounded-br-3xl rounded-bl-3xl border-t border-b py-32 md:px-6 md:rounded-br-[5rem] md:rounded-bl-[5rem]"
+      style={{
+        boxShadow: `
+          inset 0 20px 30px -12px rgba(244, 63, 94, 0.2),
+          inset 0 -20px 30px -12px rgba(244, 63, 94, 0.2)
+        `,
+      }}
     >
-      <div className="container mx-auto px-4 2xl:max-w-[1400px]">
+      <div className="absolute z-0 h-full w-full">
+        <Spotlight />
+      </div>
+      <div className="absolute bottom-0 z-0 h-full w-full rotate-180">
+        <Spotlight />
+      </div>
+
+      <div className="container mx-auto px-4 2xl:max-w-[1400px] relative z-10">
         <motion.div
           className="flex justify-center"
           initial={{ opacity: 0, y: 50 }}
@@ -117,170 +91,64 @@ export default function Hero() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.75, delay: 0.2 }}
           >
-Start Your Personal Fitness Journey with
+Unlock Your Fitness Potential with
             <img
               src="/rose.webp"
               alt="Logo"
               draggable={false}
               className="mx-4 mb-2 inline-block h-12 w-12 md:h-16 md:w-16"
             />
-            SSN.
+            SSN AI Assistant.
           </motion.h1>
         </div>
         <motion.div
-          className="mx-auto mt-5 max-w-[580px] text-center"
+          className="mx-auto mt-5 max-w-4xl text-center"
           initial={{ opacity: 0, y: 50 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.75, delay: 0.3 }}
         >
           <p className="text-muted-foreground text-xl">
-            Your complete fitness companion offering personalized consultations, custom workout plans, 
-            expert supplement guidance, and powerful health tracking tools.
+            Smart fitness companion that analyzes your goals, creates custom workout plans, 
+            and provides real-time coaching through advanced AI technology.
           </p>
         </motion.div>
+
+        {/* AI Control Tray for large screens in hero */}
         <motion.div
-          className="mt-8 flex justify-center gap-3"
-          initial={{ opacity: 0, y: 50 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.75, delay: 0.4 }}
+          className="mx-auto mt-12 mb-8 pt-6 pb-4 flex justify-center lg:block hidden"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: showHeroTray ? 1 : 0, y: showHeroTray ? 0 : 20 }}
+          transition={{ duration: 0.3 }}
         >
-          <Link href="/docs/introduction">
-            <Button className="bg-gradient-to-b from-rose-500 to-rose-700 text-sm text-white shadow-[0px_2px_0px_0px_rgba(255,255,255,0.3)_inset]">
-              Start Your Journey
-            </Button>
-          </Link>
-          <Link href="/about">
-            <Button variant={'secondary'}>
-              Learn More <MoveRight className="ml-2 h-4 w-4" />
-            </Button>
-          </Link>
+          <div className="flex justify-center">
+            <EnhancedAIVoiceControlTray size="lg" />
+          </div>
         </motion.div>
-        {/* Feature cards section - V0 Compatible and Animated Out of Box */}
-        <div className="mx-auto mt-12 w-[90%] text-center xl:-mt-[150px]">
-          <div className="relative">
-            {/* Desktop layout - cards on left and right */}
-            <div className="hidden xl:flex justify-between items-center">
-              <motion.div
-                initial={{ opacity: 0, y: 50 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 1, delay: 1.25 }}
-                className="w-[280px]"
-              >
-                <CardHoverEffect
-                  title={cards[0].title}
-                  description={cards[0].description}
-                  icon={cards[0].icon}
-                  variant={cards[0].variant}
-                  glowEffect={true}
-                  size={'lg'}
-                  showGridLines={cards[0].showGridLines}
-                />
-              </motion.div>
-              <motion.div
-                initial={{ opacity: 0, y: 50 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 1, delay: 1.25 }}
-                className="w-[280px]"
-              >
-                <CardHoverEffect
-                  title={cards[1].title}
-                  description={cards[1].description}
-                  icon={cards[1].icon}
-                  variant={cards[1].variant}
-                  glowEffect={true}
-                  size={'lg'}
-                  showGridLines={cards[1].showGridLines}
-                />
-              </motion.div>
-            </div>
 
-            {/* Mobile view - show cards in center for smaller screens */}
-            <div className="flex flex-col gap-8 sm:flex-row xl:hidden">
-              {cards.map((card, i) => (
-                <motion.div
-                  key={i}
-                  initial={{ opacity: 0, y: 50 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 1, delay: 1.25 }}
-                >
-                  <CardHoverEffect
-                    title={card.title}
-                    description={card.description}
-                    icon={card.icon}
-                    variant={card.variant}
-                    glowEffect={true}
-                    size={'lg'}
-                    showGridLines={card.showGridLines}
-                  />
-                </motion.div>
-              ))}
-            </div>
-          </div>
-        </div>
+        {/* Feature cards section - Flip Cards */}
+        <FitnessFlipCards />
 
-        {/* Stats cards section - 100+ Components and 15+ Categories */}
-        <div id="stats-cards-section" className="mx-auto mt-12 mb-[-100px] w-full text-center">
-          <div className="relative">
-            {/* Desktop layout - stats cards on left and right */}
-            <div className="hidden xl:flex justify-between items-center">
-              {isScriptLoaded && (
-                <motion.div
-                  className="bg-background h-[370px] w-[300px]"
-                  initial={{ opacity: 0, y: 50 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.75, delay: 0.5 }}
-                >
-                  <PixelCard
-                    key={cardConfigurations[0].label}
-                    label={cardConfigurations[0].label}
-                    canvasProps={cardConfigurations[0].canvasProps}
-                    number={cardConfigurations[0].number}
-                    icon={cardConfigurations[0].icon}
-                    desc={cardConfigurations[0].desc}
-                    color={cardConfigurations[0].color}
-                  />
-                </motion.div>
-              )}
-              {isScriptLoaded && (
-                <motion.div
-                  className="bg-background h-[370px] w-[300px]"
-                  initial={{ opacity: 0, y: 50 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.75, delay: 0.5 }}
-                >
-                  <PixelCard
-                    color={cardConfigurations[1].color}
-                    icon={cardConfigurations[1].icon}
-                    key={cardConfigurations[1].label}
-                    label={cardConfigurations[1].label}
-                    canvasProps={cardConfigurations[1].canvasProps}
-                    number={cardConfigurations[1].number}
-                    desc={cardConfigurations[1].desc}
-                  />
-                </motion.div>
-              )}
-            </div>
-          </div>
-        </div>
+
 
 
 
         {/* Industry standards section */}
         <motion.div
-          className="mt-12 flex items-center justify-center gap-x-1"
+          className="mt-8 mb-8 relative flex items-center justify-center gap-x-1"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.75, delay: 0.75 }}
         >
-          <motion.img
+          {/* Left SSN Icon */}
+          <img
+            src="/left-ssn-icon.png"
+            alt="Left SSN Icon"
+            width={100}
+            height={40}
+            className="absolute left-0 h-10 w-auto select-none opacity-30"
             draggable={false}
-            initial={{ opacity: 0, x: -50 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 1, delay: 1.25 }}
-            src="/vector4.webp"
-            alt="Next.js"
-            className="mt-4 mr-2 hidden w-96 brightness-[4] select-none xl:block"
           />
+          
           <span className="text-sm text-gray-500">
             We use industry standards like{' '}
           </span>
@@ -308,21 +176,16 @@ Start Your Personal Fitness Journey with
             className="h-6 w-6 select-none"
             draggable={false}
           />
-          <motion.div
-            initial={{ opacity: 0, x: 50 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 1, delay: 1.25 }}
-            className="mt-4 ml-2 hidden w-96 select-none xl:block"
-          >
-            <img
-              src="/vector3.webp"
-              alt="Vector graphic"
-              width={384}
-              height={100}
-              draggable={false}
-              className="brightness-[4]"
-            />
-          </motion.div>
+
+          {/* Right SSN Icon */}
+          <img
+            src="/right-ssn-icon.png"
+            alt="Right SSN Icon"
+            width={100}
+            height={40}
+            className="absolute right-0 h-10 w-auto select-none opacity-30"
+            draggable={false}
+          />
         </motion.div>
       </div>
     </div>

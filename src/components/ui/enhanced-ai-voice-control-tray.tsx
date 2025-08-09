@@ -17,6 +17,7 @@ import {
   X,
   Loader2
 } from 'lucide-react';
+import { BorderBeam } from '@/components/ui/border-beam';
 
 interface EnhancedAIVoiceControlTrayProps {
   className?: string;
@@ -208,7 +209,7 @@ export function EnhancedAIVoiceControlTray({
 
       <motion.div
         className={cn(
-          'relative flex items-center rounded-full',
+          'relative flex items-center rounded-full overflow-hidden',
           'bg-black/90 backdrop-blur-xl',
           'border border-white/10',
           'shadow-2xl shadow-black/50',
@@ -229,6 +230,22 @@ export function EnhancedAIVoiceControlTray({
           type: 'tween'
         }}
       >
+        {/* Border animation when inactive */}
+        {connectionStatus !== 'connected' || (uiMode === 'voice' && !isRecording) ? (
+          <>
+            <BorderBeam
+              duration={6}
+              size={300}
+              className="via-rose-600/30 from-transparent to-transparent"
+            />
+            <BorderBeam
+              duration={6}
+              size={300}
+              reverse
+              className="via-red-600/30 from-transparent to-transparent"
+            />
+          </>
+        ) : null}
         {/* Rotating Glow Effect */}
         <div 
           className="absolute inset-0 rounded-full opacity-30 pointer-events-none"
@@ -436,12 +453,7 @@ export function EnhancedAIVoiceControlTray({
                   getConnectionStatusColor()
                 )} />
                 
-                {/* Click hint for disconnected state */}
-                {connectionStatus === 'disconnected' && (
-                  <div className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 text-xs text-white/60 whitespace-nowrap">
-                    Click to connect
-                  </div>
-                )}
+
 
                 <motion.span 
                   className={config.voiceIcon}

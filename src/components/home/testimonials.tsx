@@ -12,58 +12,58 @@ const space = Geist({
 
 const testimonials = [
   {
-    text: 'Mvpblocks has completely changed the way I build UIs. Copy-paste, done. No more design stress.',
+    text: 'Dherya\'s nutrition consultation completely transformed my fitness journey. Lost 15kg in 4 months with Sri Sai products!',
 
     name: 'Arjun Mehta',
-    username: '@arjdev',
+    username: '@arjunfit',
   },
   {
-    text: 'Honestly shocked at how smooth the animations and styling are out of the box. Just works.',
+    text: 'The SSN Fitness Platform is incredible! Personalized workouts and nutrition tracking made everything so simple.',
 
     name: 'Sara Lin',
-    username: '@sara.codes',
+    username: '@sara_fitness',
   },
   {
-    text: 'Our team launched a client site in 2 days using Mvpblocks. Saved so much time.',
+    text: 'Sri Sai Nutrition whey protein is the best I\'ve tried. Great taste, amazing results, and Dherya\'s guidance is top-notch.',
 
     name: 'Devon Carter',
-    username: '@devninja',
+    username: '@devonfitness',
   },
   {
-    text: 'Plugged a few blocks into our existing codebase and everything blended perfectly. Massive W.',
+    text: 'Dherya\'s consultation helped me understand my body better. The customized diet plan with Sri Sai supplements works perfectly.',
 
     name: 'Priya Shah',
-    username: '@priyacodes',
+    username: '@priya_wellness',
   },
   {
-    text: 'Found a beautiful hero section, dropped it into V0, tweaked copy, and shipped in 15 minutes.',
+    text: 'SSN Fitness Platform\'s meal planning feature is a game-changer. Combined with Dherya\'s expertise, I\'m in the best shape ever!',
 
     name: 'Leo Martin',
-    username: '@leobuilds',
+    username: '@leo_gains',
   },
   {
-    text: 'Mvpblocks helped us prototype multiple landing pages without writing CSS once.',
+    text: 'Sri Sai Nutrition products are pure quality. Dherya\'s consultation made me realize what my body actually needed.',
 
     name: 'Chloe Winters',
-    username: '@chloewinters',
+    username: '@chloe_strong',
   },
   {
-    text: 'As a solo founder, Mvpblocks lets me move fast without sacrificing design quality.',
+    text: 'As a busy professional, SSN Fitness Platform keeps me on track. Dherya\'s guidance made sustainable changes possible.',
 
     name: 'Ayaan Malik',
-    username: '@ayaan_dev',
+    username: '@ayaan_health',
   },
   {
-    text: 'Can’t believe how polished the components look. Clients are impressed every time.',
+    text: 'The combination of Sri Sai supplements and Dherya\'s consultation is unbeatable. Gained 8kg lean muscle in 6 months!',
 
     name: 'Monica Reeves',
-    username: '@monicareeves',
+    username: '@monica_muscle',
   },
   {
-    text: 'This tool is a lifesaver when deadlines are tight. Drop in a block, tweak, and deploy.',
+    text: 'SSN Fitness Platform\'s progress tracking motivated me daily. Dherya\'s support made all the difference in my transformation.',
 
     name: 'James Roy',
-    username: '@jamesrdev',
+    username: '@james_transform',
   },
 ];
 
@@ -159,11 +159,10 @@ const Testimonials = () => {
               space.className,
             )}
           >
-            What our users say
+            What our clients say
           </h2>
           <p className="mt-5 text-center text-lg text-zinc-500">
-            From intuitive design to powerful features, our app has become an
-            essential tool for users around the world.
+            From personalized nutrition plans to fitness transformations, our platform and Dherya's expertise have helped clients achieve their health goals.
           </p>
         </motion.div>
         <div className="my-16 flex max-h-[738px] justify-center gap-6 overflow-hidden [mask-image:linear-gradient(to_bottom,transparent,black_25%,black_75%,transparent)]">

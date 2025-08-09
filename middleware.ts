@@ -1,31 +1,47 @@
-import { launched } from '@/config/site';
-import { NextResponse } from 'next/server';
-import type { NextRequest } from 'next/server';
+import { createServerClient } from '@supabase/ssr'
+import { NextResponse, type NextRequest } from 'next/server'
 
-export function middleware(request: NextRequest) {
-  const { pathname } = new URL(request.url);
+export async function middleware(request: NextRequest) {
+  let supabaseResponse = NextResponse.next({
+    request,
+  })
 
-  // Prevent redirect loops and API calls from being redirected
-  if (
-    !launched &&
-    pathname !== '/waitlist' &&
-    process.env.NODE_ENV !== 'development'
-  ) {
-    return NextResponse.redirect(new URL('/waitlist', request.url), 307);
-  }
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll()
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value, options }) => request.cookies.set(name, value))
+          supabaseResponse = NextResponse.next({
+            request,
+          })
+          cookiesToSet.forEach(({ name, value, options }) =>
+            supabaseResponse.cookies.set(name, value, options)
+          )
+        },
+      },
+    }
+  )
 
-  // If launched is true then waitlist cant be accessed
-  if (
-    launched &&
-    pathname === '/waitlist' &&
-    process.env.NODE_ENV !== 'development'
-  ) {
-    return NextResponse.redirect(new URL('/', request.url), 307);
-  }
+  // Refresh session if expired - required for Server Components
+  await supabase.auth.getUser()
 
-  return NextResponse.next();
+  return supabaseResponse
 }
 
 export const config = {
-  matcher: '/((?!_next|api|static|favicon.ico).*)',
-};
+  matcher: [
+    /*
+     * Match all request paths except for the ones starting with:
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     * Feel free to modify this pattern to include more paths.
+     */
+    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+  ],
+}

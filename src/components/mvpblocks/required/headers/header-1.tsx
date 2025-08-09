@@ -6,6 +6,9 @@ import { Menu, X, ChevronDown, ArrowRight, Sparkles } from 'lucide-react';
 import Link from 'next/link';
 import { useTheme } from 'next-themes';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
+import { useAuth } from '@/contexts/auth-context';
+import { AuthModal } from '@/components/auth/auth-modal';
+import { UserAvatar } from '@/components/auth/user-avatar';
 
 interface NavItem {
   name: string;
@@ -16,14 +19,27 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { name: 'Home', href: '/' },
-  { name: 'About', href: '/about' },
 ];
 
 export default function Header1() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
+  const [authModalOpen, setAuthModalOpen] = useState(false);
   const { theme } = useTheme();
+  const { user, loading } = useAuth();
+
+  // Listen for auth modal events from AI or other components
+  useEffect(() => {
+    const handleShowAuthModal = () => {
+      setAuthModalOpen(true)
+    }
+
+    window.addEventListener('showAuthModal', handleShowAuthModal)
+    return () => {
+      window.removeEventListener('showAuthModal', handleShowAuthModal)
+    }
+  }, [])
 
   useEffect(() => {
     const handleScroll = () => {
@@ -145,15 +161,31 @@ export default function Header1() {
 
           <div className="hidden items-center space-x-4 lg:flex">
             <ThemeToggle />
-            <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-              <Link
-                href="/signup"
-                className="inline-flex items-center space-x-2 rounded-full bg-gradient-to-r from-rose-500 to-rose-700 px-6 py-2.5 font-medium text-white transition-all duration-200 hover:shadow-lg"
-              >
-                <span>Get Started</span>
-                <ArrowRight className="h-4 w-4" />
-              </Link>
-            </motion.div>
+            {!loading && (
+              <>
+                {!user && (
+                  <motion.button
+                    onClick={() => setAuthModalOpen(true)}
+                    className="text-foreground hover:text-rose-500 font-medium transition-colors duration-200"
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                  >
+                    Login
+                  </motion.button>
+                )}
+                {user && <UserAvatar />}
+                <Link href="/consult">
+                  <motion.button
+                    className="inline-flex items-center space-x-2 rounded-full bg-gradient-to-r from-rose-500 to-rose-700 px-6 py-2.5 font-medium text-white transition-all duration-200 hover:shadow-lg"
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                  >
+                    <span>Consult</span>
+                    <ArrowRight className="h-4 w-4" />
+                  </motion.button>
+                </Link>
+              </>
+            )}
           </div>
 
           <motion.button
@@ -190,23 +222,67 @@ export default function Header1() {
                     {item.name}
                   </Link>
                 ))}
+                {user && (
+                  <>
+                    <Link
+                      href="/profile"
+                      className="text-foreground hover:bg-muted block px-4 py-3 font-medium transition-colors duration-200"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                    >
+                      Profile
+                    </Link>
+                    <Link
+                      href="/report"
+                      className="text-foreground hover:bg-muted block px-4 py-3 font-medium transition-colors duration-200"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                    >
+                      Reports
+                    </Link>
+                  </>
+                )}
                 <div className="space-y-2 px-4 py-2">
                   <div className="flex justify-center py-2">
                     <ThemeToggle />
                   </div>
-                  <Link
-                    href="/signup"
-                    className="block w-full rounded-lg bg-gradient-to-r from-rose-500 to-rose-700 py-2.5 text-center font-medium text-white transition-all duration-200 hover:shadow-lg"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                  >
-                    Get Started
-                  </Link>
+                  {!loading && (
+                    <div className="space-y-2">
+                      {!user && (
+                        <button
+                          onClick={() => {
+                            setAuthModalOpen(true)
+                            setIsMobileMenuOpen(false)
+                          }}
+                          className="block w-full rounded-lg border border-rose-500 py-2.5 text-center font-medium text-rose-500 transition-all duration-200 hover:bg-rose-50 dark:hover:bg-rose-950"
+                        >
+                          Login
+                        </button>
+                      )}
+                      {user && (
+                        <div className="flex justify-center py-2">
+                          <UserAvatar />
+                        </div>
+                      )}
+                      <Link href="/consult">
+                        <button
+                          onClick={() => setIsMobileMenuOpen(false)}
+                          className="block w-full rounded-lg bg-gradient-to-r from-rose-500 to-rose-700 py-2.5 text-center font-medium text-white transition-all duration-200 hover:shadow-lg"
+                        >
+                          Consult
+                        </button>
+                      </Link>
+                    </div>
+                  )}
                 </div>
               </div>
             </motion.div>
           )}
         </AnimatePresence>
       </div>
+      
+      <AuthModal
+        isOpen={authModalOpen}
+        onClose={() => setAuthModalOpen(false)}
+      />
     </motion.header>
   );
 }
