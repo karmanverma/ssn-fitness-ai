@@ -1,20 +1,21 @@
 'use client'
 
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
-import { Camera, Edit, Target, TrendingUp } from 'lucide-react'
+import { AvatarUpload } from '@/components/ui/avatar-upload'
+import { Edit, Target, TrendingUp } from 'lucide-react'
 import { UserProfile } from '@/types/profile'
 import { ProfileService } from '@/lib/profile-service'
 
 interface ProfileHeaderProps {
   profile: UserProfile
   onEditClick: () => void
+  onProfileUpdate?: (updatedProfile: Partial<UserProfile>) => void
 }
 
-export function ProfileHeader({ profile, onEditClick }: ProfileHeaderProps) {
+export function ProfileHeader({ profile, onEditClick, onProfileUpdate }: ProfileHeaderProps) {
   const profileService = new ProfileService()
   const bmiInfo = profile.bmi ? profileService.getBMICategory(profile.bmi) : null
   
@@ -44,21 +45,14 @@ export function ProfileHeader({ profile, onEditClick }: ProfileHeaderProps) {
       <CardContent className="p-8">
         <div className="flex flex-col md:flex-row gap-6 items-start">
           {/* Avatar Section */}
-          <div className="relative">
-            <Avatar className="w-24 h-24 border-4 border-white shadow-lg">
-              <AvatarImage src={profile.avatar_url} />
-              <AvatarFallback className="text-2xl font-semibold bg-gradient-to-br from-rose-500 to-pink-600 text-white">
-                {profile.full_name?.split(' ').map(n => n[0]).join('') || 'U'}
-              </AvatarFallback>
-            </Avatar>
-            <Button
-              size="sm"
-              variant="secondary"
-              className="absolute -bottom-2 -right-2 rounded-full w-8 h-8 p-0"
-            >
-              <Camera className="w-4 h-4" />
-            </Button>
-          </div>
+          <AvatarUpload
+            user={{ ...profile, id: profile.id }}
+            size="xl"
+            className="border-4 border-white shadow-lg"
+            onAvatarUpdate={(avatarUrl) => {
+              onProfileUpdate?.({ avatar_url: avatarUrl || undefined })
+            }}
+          />
 
           {/* Profile Info */}
           <div className="flex-1 space-y-4">

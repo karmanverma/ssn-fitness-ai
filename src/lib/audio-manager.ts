@@ -128,6 +128,8 @@ export class AudioManager {
       this.source.connect(this.analyser);
       
       // Create script processor for real-time audio processing
+      // TODO: Migrate to AudioWorkletNode to resolve deprecation warning
+      // This requires creating a separate worklet file and more complex setup
       this.processor = this.audioContext.createScriptProcessor(
         this.config.chunkSize, 
         this.config.channels, 

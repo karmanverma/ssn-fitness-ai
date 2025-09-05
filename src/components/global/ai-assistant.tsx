@@ -51,45 +51,7 @@ export function GlobalAIAssistant() {
 
   return (
     <>
-      {/* Streaming Response Display - Only in text mode without sidebar */}
-      <AnimatePresence>
-        {uiMode === 'text' && !isSidebarOpen && (currentResponse || isStreaming) && (
-          <motion.div
-            className="fixed z-30 pointer-events-none"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{
-              opacity: 1,
-              y: 0,
-              left: '50%',
-              x: '-50%',
-              bottom: 'calc(2rem + 100px)' // 100px above tray
-            }}
-            exit={{ opacity: 0, y: 20 }}
-            transition={{
-              type: 'tween',
-              duration: 0.3,
-              ease: [0.25, 0.46, 0.45, 0.94]
-            }}
-          >
-            <div className="max-w-2xl px-6 py-3" style={{ paddingLeft: '4rem', paddingRight: '4rem' }}>
-              <motion.p 
-                className="text-white/90 text-lg leading-relaxed text-center"
-                style={{
-                  textShadow: '0 2px 8px rgba(0, 0, 0, 0.3)',
-                  lineHeight: '1.4',
-                  maxHeight: '3.6em', // Roughly 2 lines
-                  overflow: 'hidden',
-                  display: '-webkit-box',
-                  WebkitLineClamp: 2,
-                  WebkitBoxOrient: 'vertical'
-                }}
-              >
-                {currentResponse || (isStreaming ? 'AI is thinking...' : '')}
-              </motion.p>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+
 
       {/* Fixed AI Voice Control Tray */}
       <motion.div

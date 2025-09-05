@@ -7,12 +7,9 @@ import { useEnhancedAIAssistant } from '@/contexts/enhanced-ai-assistant-context
 import { 
   MessageSquare, 
   Mic, 
-  MicOff, 
   Pause, 
-  Play, 
   Settings,
   Volume2,
-  VolumeX,
   Send,
   X,
   Loader2
@@ -44,17 +41,16 @@ export function EnhancedAIVoiceControlTray({
     startVoiceRecording,
     stopVoiceRecording,
     sendTextMessage,
+    clearConversation,
     switchToVoiceMode,
     switchToTextMode,
     toggleSidebar,
-    connect
   } = useEnhancedAIAssistant();
 
   const [textInput, setTextInput] = useState('');
   const [pulseKey, setPulseKey] = useState(0);
   const inputRef = React.useRef<HTMLInputElement>(null);
-
-  // No auto-connection - connect only when needed
+  const chatContainerRef = React.useRef<HTMLDivElement>(null);
 
   // Update pulse key when recording state changes
   useEffect(() => {
@@ -104,7 +100,6 @@ export function EnhancedAIVoiceControlTray({
   const handleVoiceToggle = async () => {
     if (uiMode === 'voice') {
       if (connectionStatus === 'disconnected') {
-        // Connect first, then start recording
         console.log('🔗 Connecting and starting voice recording...');
         await startVoiceRecording();
       } else if (isRecording) {
@@ -173,65 +168,211 @@ export function EnhancedAIVoiceControlTray({
     }
   };
 
-  // Get the last AI response
-  const lastAIMessage = messages.filter(m => m.role === 'assistant').pop();
-  const showLastResponse = uiMode === 'text' && !isSidebarOpen && lastAIMessage;
+  // Show chat history in text mode when sidebar is closed
+  const showChatHistory = uiMode === 'text' && !isSidebarOpen && messages.length > 0;
+  
+  // Add a slight delay for smoother transitions
+  const [isExpanded, setIsExpanded] = useState(false);
+  
+  useEffect(() => {
+    if (showChatHistory) {
+      const timer = setTimeout(() => setIsExpanded(true), 100);
+      return () => clearTimeout(timer);
+    } else {
+      setIsExpanded(false);
+    }
+  }, [showChatHistory]);
+
+  // Auto-scroll to bottom when new messages arrive
+  useEffect(() => {
+    if (chatContainerRef.current && showChatHistory) {
+      const timer = setTimeout(() => {
+        if (chatContainerRef.current) {
+          chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+        }
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [messages, isStreaming, showChatHistory]);
 
   return (
-    <>
-      {/* Last AI Response Display */}
-      <AnimatePresence>
-        {showLastResponse && (
+    <motion.div
+      className={cn(
+        'relative overflow-hidden',
+        'bg-black/90 backdrop-blur-xl',
+        'border border-white/10',
+        'shadow-2xl shadow-black/50',
+        className,
+      )}
+      initial={{ opacity: 0, y: 20, scale: 0.9 }}
+      animate={{ 
+        opacity: 1, 
+        y: 0, 
+        scale: 1,
+        width: uiMode === 'text' ? '600px' : '400px',
+        borderRadius: showChatHistory ? '1rem' : '9999px'
+      }}
+      transition={{ 
+        duration: 0.5, 
+        ease: [0.25, 0.46, 0.45, 0.94],
+        width: { duration: 0.4 },
+        borderRadius: { duration: 0.3, delay: showChatHistory ? 0 : 0.2 }
+      }}
+      layout="position"
+    >
+      {/* Chat History Section - Only in Text Mode */}
+      <AnimatePresence mode="wait">
+        {showChatHistory && (
           <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 10 }}
-            transition={{ duration: 0.3 }}
-            className="mb-4 text-center"
+            initial={{ opacity: 0, height: 0, y: -20 }}
+            animate={{ 
+              opacity: 1, 
+              height: 'auto',
+              y: 0
+            }}
+            exit={{ 
+              opacity: 0, 
+              height: 0,
+              y: -20
+            }}
+            transition={{ 
+              duration: 0.6,
+              ease: [0.25, 0.46, 0.45, 0.94],
+              height: { 
+                duration: 0.5,
+                ease: [0.25, 0.46, 0.45, 0.94]
+              },
+              opacity: { 
+                duration: 0.4, 
+                delay: showChatHistory ? 0.1 : 0,
+                ease: "easeOut"
+              },
+              y: {
+                duration: 0.4,
+                ease: [0.25, 0.46, 0.45, 0.94]
+              }
+            }}
+            className="border-b border-white/10 overflow-hidden"
           >
-            <div className="text-white text-base">
-              {isStreaming ? (
-                <div className="flex items-center justify-center gap-2">
-                  <span>AI is thinking</span>
-                  <div className="flex gap-1">
-                    <div className="w-1 h-1 bg-white/60 rounded-full animate-pulse" style={{ animationDelay: '0ms' }} />
-                    <div className="w-1 h-1 bg-white/60 rounded-full animate-pulse" style={{ animationDelay: '200ms' }} />
-                    <div className="w-1 h-1 bg-white/60 rounded-full animate-pulse" style={{ animationDelay: '400ms' }} />
-                  </div>
+            {/* Chat Header */}
+            <motion.div 
+              className="px-4 py-2 bg-white/5"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.2, duration: 0.3 }}
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-white/70 text-xs font-medium">Chat History</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-white/50 text-xs">{messages.length} messages</span>
+                  {messages.length > 0 && (
+                    <motion.button
+                      onClick={clearConversation}
+                      className="text-white/40 hover:text-white/70 transition-colors p-1 rounded"
+                      title="Clear chat"
+                      whileHover={{ scale: 1.1 }}
+                      whileTap={{ scale: 0.9 }}
+                    >
+                      <X className="h-3 w-3" />
+                    </motion.button>
+                  )}
                 </div>
-              ) : (
-                lastAIMessage.content.text
-              )}
-            </div>
+              </div>
+            </motion.div>
+            
+            {/* Chat Messages Container */}
+            <motion.div 
+              ref={chatContainerRef}
+              className="max-h-80 overflow-y-auto custom-scrollbar"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.3, duration: 0.4 }}
+            >
+              <div className="p-4 space-y-4">
+                {messages.map((message, index) => (
+                  <motion.div
+                    key={message.id}
+                    initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    transition={{ 
+                      delay: 0.4 + (index * 0.03),
+                      duration: 0.3,
+                      ease: [0.25, 0.46, 0.45, 0.94]
+                    }}
+                    className={cn(
+                      'flex gap-3',
+                      message.role === 'user' ? 'justify-end' : 'justify-start'
+                    )}
+                  >
+                    {message.role === 'assistant' && (
+                      <div className="flex-shrink-0 w-8 h-8 bg-gradient-to-br from-rose-500 to-pink-600 rounded-full flex items-center justify-center">
+                        <span className="text-white text-sm font-medium">AI</span>
+                      </div>
+                    )}
+                    
+                    <div className={cn(
+                      'max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-relaxed',
+                      message.role === 'user' 
+                        ? 'bg-white/10 text-white ml-auto' 
+                        : 'bg-white/5 text-white/90'
+                    )}>
+                      {message.content.text}
+                    </div>
+                    
+                    {message.role === 'user' && (
+                      <div className="flex-shrink-0 w-8 h-8 bg-white/10 rounded-full flex items-center justify-center">
+                        <span className="text-white text-sm font-medium">You</span>
+                      </div>
+                    )}
+                  </motion.div>
+                ))}
+                
+                {/* Streaming indicator */}
+                <AnimatePresence>
+                  {isStreaming && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                      transition={{ duration: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
+                      className="flex gap-3 justify-start"
+                    >
+                      <div className="flex-shrink-0 w-8 h-8 bg-gradient-to-br from-rose-500 to-pink-600 rounded-full flex items-center justify-center">
+                        <span className="text-white text-sm font-medium">AI</span>
+                      </div>
+                      <div className="bg-white/5 text-white/90 rounded-2xl px-4 py-3 text-sm">
+                        <div className="flex items-center gap-2">
+                          <span>AI is thinking</span>
+                          <div className="flex gap-1">
+                            <div className="w-1 h-1 bg-white/60 rounded-full animate-pulse" style={{ animationDelay: '0ms' }} />
+                            <div className="w-1 h-1 bg-white/60 rounded-full animate-pulse" style={{ animationDelay: '200ms' }} />
+                            <div className="w-1 h-1 bg-white/60 rounded-full animate-pulse" style={{ animationDelay: '400ms' }} />
+                          </div>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      <motion.div
+      {/* Input/Control Section */}
+      <motion.div 
         className={cn(
-          'relative flex items-center rounded-full overflow-hidden',
-          'bg-black/90 backdrop-blur-xl',
-          'border border-white/10',
-          'shadow-2xl shadow-black/50',
-          config.container,
-          'justify-between',
-          className,
+          'relative flex items-center',
+          showChatHistory ? 'px-4 py-3' : cn(config.container, 'justify-between')
         )}
-        initial={{ opacity: 0, y: 20, scale: 0.9 }}
-        animate={{ 
-          opacity: 1, 
-          y: 0, 
-          scale: 1,
-          width: uiMode === 'text' ? '600px' : '400px'
-        }}
+        layout
         transition={{ 
-          duration: 0.3, 
-          ease: [0.25, 0.46, 0.45, 0.94],
-          type: 'tween'
+          duration: 0.4,
+          ease: [0.25, 0.46, 0.45, 0.94]
         }}
       >
-        {/* Border animation when inactive */}
-        {connectionStatus !== 'connected' || (uiMode === 'voice' && !isRecording) ? (
+        {/* Border animation when inactive - Only for rounded tray */}
+        {!showChatHistory && (connectionStatus !== 'connected' || (uiMode === 'voice' && !isRecording)) ? (
           <>
             <BorderBeam
               duration={6}
@@ -246,60 +387,65 @@ export function EnhancedAIVoiceControlTray({
             />
           </>
         ) : null}
-        {/* Rotating Glow Effect */}
-        <div 
-          className="absolute inset-0 rounded-full opacity-30 pointer-events-none"
-          style={{
-            background: `conic-gradient(
-              from var(--glow-angle, 0deg),
-              transparent 0deg,
-              rgba(244, 63, 94, 0.4) 60deg,
-              rgba(59, 130, 246, 0.4) 120deg,
-              rgba(168, 85, 247, 0.4) 180deg,
-              rgba(34, 197, 94, 0.4) 240deg,
-              rgba(251, 191, 36, 0.4) 300deg,
-              transparent 360deg
-            )`,
-            animation: 'glow-rotate 4s linear infinite',
-            filter: 'blur(8px)',
-            zIndex: -1,
-          }}
-        />
 
-        {/* Audio level visualization */}
-        {isRecording && audioLevel > 0 && (
+        {/* Rotating Glow Effect - Only for rounded tray */}
+        {!showChatHistory && (
+          <div 
+            className="absolute inset-0 rounded-full opacity-30 pointer-events-none"
+            style={{
+              background: `conic-gradient(
+                from var(--glow-angle, 0deg),
+                transparent 0deg,
+                rgba(244, 63, 94, 0.4) 60deg,
+                rgba(59, 130, 246, 0.4) 120deg,
+                rgba(168, 85, 247, 0.4) 180deg,
+                rgba(34, 197, 94, 0.4) 240deg,
+                rgba(251, 191, 36, 0.4) 300deg,
+                transparent 360deg
+              )`,
+              animation: 'glow-rotate 4s linear infinite',
+              filter: 'blur(8px)',
+              zIndex: -1,
+            }}
+          />
+        )}
+
+        {/* Audio level visualization - Only for rounded tray */}
+        {!showChatHistory && isRecording && audioLevel > 0 && (
           <div 
             className="absolute inset-0 rounded-full bg-green-500/20 blur-sm"
             style={{ opacity: audioLevel / 100 }}
           />
         )}
 
-        {/* Ambient glow when recording */}
-        <AnimatePresence>
-          {uiMode === 'voice' && isRecording && (
-            <motion.div
-              className="absolute inset-0 rounded-full"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-            >
+        {/* Ambient glow when recording - Only for rounded tray */}
+        {!showChatHistory && (
+          <AnimatePresence>
+            {uiMode === 'voice' && isRecording && (
               <motion.div
-                key={pulseKey}
-                className="absolute inset-0 rounded-full bg-rose-500/20 blur-xl"
-                initial={{ scale: 1, opacity: 0.5 }}
-                animate={{ 
-                  scale: [1, 1.2, 1],
-                  opacity: [0.5, 0.8, 0.5]
-                }}
-                transition={{ 
-                  duration: 2,
-                  ease: 'easeInOut',
-                  repeat: Infinity
-                }}
-              />
-            </motion.div>
-          )}
-        </AnimatePresence>
+                className="absolute inset-0 rounded-full"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+              >
+                <motion.div
+                  key={pulseKey}
+                  className="absolute inset-0 rounded-full bg-rose-500/20 blur-xl"
+                  initial={{ scale: 1, opacity: 0.5 }}
+                  animate={{ 
+                    scale: [1, 1.2, 1],
+                    opacity: [0.5, 0.8, 0.5]
+                  }}
+                  transition={{ 
+                    duration: 2,
+                    ease: 'easeInOut',
+                    repeat: Infinity
+                  }}
+                />
+              </motion.div>
+            )}
+          </AnimatePresence>
+        )}
 
         <AnimatePresence mode="wait">
           {uiMode === 'text' ? (
@@ -452,8 +598,6 @@ export function EnhancedAIVoiceControlTray({
                   'absolute -top-1 -right-1 w-3 h-3 rounded-full border-2 border-black/50',
                   getConnectionStatusColor()
                 )} />
-                
-
 
                 <motion.span 
                   className={config.voiceIcon}
@@ -513,7 +657,7 @@ export function EnhancedAIVoiceControlTray({
         </AnimatePresence>
       </motion.div>
       
-      {/* CSS for glow animation */}
+      {/* CSS for glow animation and custom scrollbar */}
       <style jsx global>{`
         @property --glow-angle {
           syntax: '<angle>';
@@ -526,7 +670,29 @@ export function EnhancedAIVoiceControlTray({
             --glow-angle: 360deg;
           }
         }
+
+        .custom-scrollbar {
+          scrollbar-width: thin;
+          scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 6px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: transparent;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: rgba(255, 255, 255, 0.2);
+          border-radius: 3px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: rgba(255, 255, 255, 0.3);
+        }
       `}</style>
-    </>
+    </motion.div>
   );
 }

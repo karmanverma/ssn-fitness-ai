@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { ProfileFormData } from '@/types/profile'
-import { User, Activity, Target } from 'lucide-react'
+import { User, Activity, Target, Settings } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useToast } from '@/hooks/use-toast'
 
@@ -43,6 +43,15 @@ export default function ProfilePage() {
         variant: "destructive",
       })
     }
+  }
+
+  const handleProfileUpdate = () => {
+    // This will be handled by the profile context automatically
+    // when the avatar upload component updates the database
+    toast({
+      title: "Avatar Updated",
+      description: "Your profile picture has been updated.",
+    })
   }
 
   if (authLoading || loading) {
@@ -79,7 +88,8 @@ export default function ProfilePage() {
         {profile ? (
           <ProfileHeader 
             profile={profile} 
-            onEditClick={() => setIsEditing(true)} 
+            onEditClick={() => setIsEditing(true)}
+            onProfileUpdate={handleProfileUpdate}
           />
         ) : (
           <Card className="border-dashed border-2">

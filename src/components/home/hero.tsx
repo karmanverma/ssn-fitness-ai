@@ -134,7 +134,7 @@ Unlock Your Fitness Potential with
 
         {/* Industry standards section */}
         <motion.div
-          className="mt-8 mb-8 relative flex items-center justify-center gap-x-1"
+          className="mt-8 mb-8 flex items-center justify-center gap-x-2"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.75, delay: 0.75 }}
@@ -143,9 +143,9 @@ Unlock Your Fitness Potential with
           <img
             src="/left-ssn-icon.png"
             alt="Left SSN Icon"
-            width={100}
-            height={40}
-            className="absolute left-0 h-10 w-auto select-none opacity-30"
+            width={52}
+            height={36}
+            className="h-9 w-auto select-none"
             draggable={false}
           />
           
@@ -181,9 +181,9 @@ Unlock Your Fitness Potential with
           <img
             src="/right-ssn-icon.png"
             alt="Right SSN Icon"
-            width={100}
-            height={40}
-            className="absolute right-0 h-10 w-auto select-none opacity-30"
+            width={52}
+            height={36}
+            className="h-9 w-auto select-none"
             draggable={false}
           />
         </motion.div>

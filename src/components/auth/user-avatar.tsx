@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { User, LogOut, FileText } from 'lucide-react'
 import { useAuth } from '@/contexts/auth-context'
+import { UserAvatar as UserAvatarComponent } from '@/components/ui/user-avatar'
 import Link from 'next/link'
 
 export function UserAvatar() {
@@ -21,28 +22,17 @@ export function UserAvatar() {
     }
   }
 
-  const getInitials = (name: string) => {
-    return name
-      .split(' ')
-      .map(word => word[0])
-      .join('')
-      .toUpperCase()
-      .slice(0, 2)
-  }
-
   const displayName = user.user_metadata?.full_name || user.email?.split('@')[0] || 'User'
 
   return (
     <div className="relative">
       <motion.button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center space-x-2 p-2 rounded-full hover:bg-muted transition-colors"
+        className="flex items-center space-x-2 p-2 rounded-full hover:bg-muted transition-colors cursor-pointer"
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
       >
-        <div className="w-8 h-8 bg-gradient-to-br from-rose-500 to-rose-700 rounded-full flex items-center justify-center text-white text-sm font-medium">
-          {getInitials(displayName)}
-        </div>
+        <UserAvatarComponent user={user} size="md" />
       </motion.button>
 
       <AnimatePresence>
@@ -61,9 +51,7 @@ export function UserAvatar() {
             >
               <div className="p-4 border-b border-border">
                 <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 bg-gradient-to-br from-rose-500 to-rose-700 rounded-full flex items-center justify-center text-white font-medium">
-                    {getInitials(displayName)}
-                  </div>
+                  <UserAvatarComponent user={user} size="lg" />
                   <div>
                     <p className="font-medium text-foreground">{displayName}</p>
                     <p className="text-sm text-muted-foreground">{user.email}</p>

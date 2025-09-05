@@ -22,20 +22,33 @@
     "fs_write",
     "report_issue",
     "use_aws",
-    "@supabase"
+    "@supabase",
+    "fsRead",
+    "fsWrite",
+    "fsReplace",
+    "listDirectory",
+    "fileSearch",
+    "executeBash",
+    "codeReview",
+    "displayFindings"
   ],
   "allowedTools": [
     "fs_read",
     "report_issue",
     "use_aws",
     "execute_bash",
-    "fs_write"
+    "fs_write",
+    "fsRead",
+    "listDirectory",
+    "fileSearch",
+    "codeReview",
+    "displayFindings"
   ],
   "toolsSettings": {
-    "use_aws": {
+    "execute_bash": {
       "preset": "readOnly"
     },
-    "execute_bash": {
+    "use_aws": {
       "preset": "readOnly"
     }
   },
@@ -44,5 +57,6 @@
     "README.md",
     ".amazonq/rules/**/*.md"
   ],
-  "resources": []
+  "resources": [],
+  "promptHooks": []
 }

@@ -601,10 +601,9 @@ You can interact via voice or text based on user preference.`
   // Generate Live API configuration
   const generateConfig = useCallback((mode: UIMode = uiMode): LiveConnectConfig => {
     const config: LiveConnectConfig = {
-      generationConfig: {
-        temperature: 0.7,
-        maxOutputTokens: 8192
-      },
+      // Move generation config to root level (new API format)
+      temperature: 0.7,
+      maxOutputTokens: 8192,
       systemInstruction: {
         parts: [{ text: systemInstructions }]
       }
@@ -714,15 +713,20 @@ You can interact via voice or text based on user preference.`
         console.log('🔗 Connecting to voice mode...');
         await connect('voice');
         
-        // Wait for connection to be established
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        
-        console.log('🔗 Connection attempt completed, status:', connectionStatus);
+        // Wait for connection to be established with proper polling
+        let attempts = 0;
+        const maxAttempts = 10;
+        while (attempts < maxAttempts && connectionStatus !== 'connected') {
+          await new Promise(resolve => setTimeout(resolve, 500));
+          attempts++;
+          console.log(`🔗 Connection attempt ${attempts}/${maxAttempts}, status:`, connectionStatus);
+        }
       }
 
       // Check if we're actually connected now
       if (connectionStatus !== 'connected' || !clientRef.current?.isConnected()) {
         console.error('❌ Not connected after connection attempt, status:', connectionStatus);
+        console.error('❌ Client connected status:', clientRef.current?.isConnected());
         return;
       }
 

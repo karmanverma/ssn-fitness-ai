@@ -421,8 +421,8 @@ export default function FitnessFlipCards() {
           effect={'coverflow'}
           grabCursor={true}
           centeredSlides={true}
-          loop={true}
-          slidesPerView={3}
+          loop={services.length > 3}
+          slidesPerView={Math.min(3, services.length)}
           coverflowEffect={{
             rotate: 0,
             stretch: 0,

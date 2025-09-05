@@ -125,8 +125,14 @@ const Testimonials = () => {
   const isInView = useInView(ref, { once: true, amount: 0.3 });
 
   const handleShareClick = () => {
-    const tweets = require('@/lib/tweet-contents').tweetContents;
-    const randomTweet = tweets[Math.floor(Math.random() * tweets.length)];
+    const fitnessQuotes = [
+      '🏋️‍♂️ Just had an amazing workout session with SSN Fitness! Their AI-powered fitness guidance is incredible. #SSNFitness #FitnessJourney',
+      '💪 SSN Fitness helped me create the perfect workout plan tailored to my goals. Highly recommend! #FitnessGoals #SSNFitness',
+      '🎯 The personalized nutrition guidance from SSN Fitness has transformed my health journey! #HealthyLiving #SSNFitness',
+      '⚡ SSN Fitness AI assistant makes fitness planning so easy and effective. Game changer! #FitnessTech #SSNFitness',
+      '🌟 Thanks to SSN Fitness, I finally have a workout routine that works for me! #FitnessSuccess #SSNFitness'
+    ];
+    const randomTweet = fitnessQuotes[Math.floor(Math.random() * fitnessQuotes.length)];
     window.open(
       `https://twitter.com/intent/tweet?text=${encodeURIComponent(randomTweet)}`,
       '_blank',
